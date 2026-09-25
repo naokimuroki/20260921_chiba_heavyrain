@@ -155,7 +155,7 @@ html,body{height:100%;font-family:var(--font);font-size:13px}
 <script>
 (function(){
   var BASE="https://forestgeo.info/ForestGeoStudio";
-  var SPECS=[{"opt": 1, "file": "colorrelief-extension.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjEsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.HxqZmCCleGYcqKESQmYLOhb-Pjla4UAe8by9VO7zAgQ"}, {"opt": 1, "file": "sentinel-change.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjEsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.HxqZmCCleGYcqKESQmYLOhb-Pjla4UAe8by9VO7zAgQ"}, {"opt": 2, "file": "treesvg.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjIsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.QWF4sXMg0l3YVKTsPCY-gYte4PR9_jIlaPSafHiIjdM"}, {"opt": 2, "file": "print-extension.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjIsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.QWF4sXMg0l3YVKTsPCY-gYte4PR9_jIlaPSafHiIjdM"}];
+  var SPECS=[{"opt": 1, "file": "colorrelief-extension.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjEsImlhdCI6MTc5MDMxMDk0NywidiI6MX0.P0vcLp3e33Hqhnh_0nhJvs_Gtz5EoiGWZ7imRgp7teg"}, {"opt": 1, "file": "sentinel-change.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjEsImlhdCI6MTc5MDMxMDk0NywidiI6MX0.P0vcLp3e33Hqhnh_0nhJvs_Gtz5EoiGWZ7imRgp7teg"}, {"opt": 2, "file": "treesvg.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjIsImlhdCI6MTc5MDMxMDk0NywidiI6MX0.W3r__0JORti3FqLyfwlwH2XaRsCsBBMk0roXt8MdCHs"}, {"opt": 2, "file": "print-extension.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjIsImlhdCI6MTc5MDMxMDk0NywidiI6MX0.W3r__0JORti3FqLyfwlwH2XaRsCsBBMk0roXt8MdCHs"}];
   function loadOne(s){
     var url=BASE+'/js.php?opt='+s.opt+'&file='+encodeURIComponent(s.file);
     return fetch(url,{headers:{'Authorization':'Bearer '+s.token}})
@@ -700,7 +700,7 @@ map.on("load", async () => {
   catch(e){ console.error('[layer] 追加に失敗:', "layer", e); }
   try { map.addLayer({"id": "SAR_9_24_9_19", "type": "raster", "source": "SAR_9_24_9_19", "minzoom": 0.0, "maxzoom": 24.0, "paint": {"raster-opacity": 0.8}}); }
   catch(e){ console.error('[layer] 追加に失敗:', "SAR_9_24_9_19", e); }
-  try { await loadFgbLayer(map, "layer_2", "%E5%9B%BD%E5%9C%9F%E5%9C%B0%E7%90%86%E9%99%A2%E3%83%BB%E6%B5%B8%E6%B0%B4%E5%88%A4%E8%AA%AD%E5%9B%B3.fgb", [{"id": "layer_2", "type": "fill", "source": "layer_2", "minzoom": 8.0, "maxzoom": 24.0, "paint": {"fill-color": "#ffff00", "fill-opacity": 2.7755575615628914e-17}}, {"id": "layer_2_outline", "type": "line", "source": "layer_2", "paint": {"line-color": "#ffff00", "line-width": 1.0, "line-opacity": 1.0}, "minzoom": 8.0, "maxzoom": 24.0}], true); }
+  try { await loadFgbLayer(map, "layer_2", "%E5%9B%BD%E5%9C%9F%E5%9C%B0%E7%90%86%E9%99%A2%E3%83%BB%E6%B5%B8%E6%B0%B4%E5%88%A4%E8%AA%AD%E5%9B%B3.fgb", [{"id": "layer_2", "type": "fill", "source": "layer_2", "minzoom": 0.0, "maxzoom": 24.0, "paint": {"fill-color": "#ffff00", "fill-opacity": 0.0}}, {"id": "layer_2_outline", "type": "line", "source": "layer_2", "paint": {"line-color": "#ffff00", "line-width": 1.0, "line-opacity": 1.0}, "minzoom": 0.0, "maxzoom": 24.0}], true); }
   catch(e){ console.error('[fgb] 読み込みに失敗:', "layer_2", e); }
 
   // 印刷レイアウト（オプション2）: print-extension.js があれば有効化
