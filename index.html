@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>台風25号による浸水状況｜千葉県印旛沼周辺</title>
+<link href="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.css" rel="stylesheet"/>
+<script src="https://unpkg.com/maplibre-gl@4.1.3/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/flatgeobuf@3.34.0/dist/flatgeobuf-geojson.min.js"></script>
+
+<style>
+:root {
+  --green: #18448E;
+  --green-dark: #213A70;
+  --text: #ffffff;
+  --panel-bg: rgba(255,255,255,0.97);
+  --shadow: 0 2px 10px rgba(0,0,0,0.3);
+  --r: 4px;
+  --bar-h: 53px;
+  --font: "Noto Sans JP","Meiryo",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font);font-size:13px}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+#title-bar{min-height:var(--bar-h);background:var(--green);color:var(--text);display:flex;align-items:center;gap:12px;padding:6px 14px;font-size:15px;font-weight:700;flex-shrink:0;box-shadow:var(--shadow);z-index:10}
+#title-text{flex:1 1 auto;min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+#title-logo{height:45px;width:auto;flex-shrink:0;margin-left:auto;display:block}
+#main{display:flex;flex:1;overflow:hidden;position:relative}
+#map{flex:1;position:relative}
+#map2{position:absolute;inset:0;display:none;z-index:1;pointer-events:none}
+#split-divider{position:absolute;top:0;bottom:0;left:50%;width:6px;margin-left:-3px;background:var(--green);display:none;z-index:22;cursor:ew-resize;box-shadow:0 0 6px rgba(0,0,0,.5)}
+#split-divider .split-handle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:var(--green);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 6px rgba(0,0,0,.5);user-select:none;pointer-events:none}
+#left-controls{position:absolute;top:10px;left:10px;z-index:20;display:flex;flex-direction:column;gap:4px}
+.ctrl-btn{background:var(--green);color:var(--text);border:none;border-radius:var(--r);padding:6px 14px;font-size:13px;font-family:var(--font);cursor:pointer;white-space:nowrap;box-shadow:var(--shadow);min-width:120px;text-align:left}
+.ctrl-btn:hover{background:var(--green-dark)}
+#btn-layer-panel{font-size:11px;padding:4px 8px;min-width:auto;opacity:0.75;letter-spacing:0.02em}
+#btn-layer-panel:hover{opacity:0.75}
+#btn-tools{font-size:11px;padding:5px 10px}
+#tool-group{display:flex;flex-direction:column;gap:4px}
+#tool-group.collapsed{display:none}
+.addr-panel{display:none;position:absolute;top:10px;left:134px;z-index:30;background:var(--panel-bg);border-radius:var(--r);box-shadow:var(--shadow);padding:6px;width:270px;flex-direction:column;gap:4px}
+.addr-panel.open{display:flex}
+.addr-row{display:flex;gap:4px}
+.addr-panel input{flex:1;border:1px solid #ccd;border-radius:var(--r);padding:4px 8px;font-size:13px;font-family:var(--font)}
+.addr-panel button{background:var(--green);color:#fff;border:none;border-radius:var(--r);padding:4px 10px;cursor:pointer;font-size:13px}
+.addr-results{list-style:none;margin:4px 0 0;padding:0;max-height:220px;overflow-y:auto}
+.addr-results li{padding:5px 8px;font-size:13px;cursor:pointer;border-radius:var(--r);color:#222}
+.addr-results li:hover{background:rgba(0,0,0,.07)}
+.addr-results li.addr-msg{cursor:default;color:#888}
+.exttile-panel{display:none;position:absolute;top:10px;left:134px;z-index:30;background:var(--panel-bg);border-radius:var(--r);box-shadow:var(--shadow);padding:8px;width:280px;flex-direction:column;gap:6px;color:#222}
+.exttile-panel.open{display:flex}
+.exttile-panel input{border:1px solid #ccd;border-radius:var(--r);padding:4px 8px;font-size:12px;font-family:var(--font);width:100%}
+.exttile-panel .exttile-row{display:flex;gap:8px;align-items:center}
+.exttile-panel .exttile-row label{flex:1;font-size:11px;display:flex;align-items:center;gap:4px;color:#222}
+.exttile-panel .exttile-row label input{width:60px}
+.exttile-panel .exttile-actions{justify-content:flex-end;gap:6px}
+.exttile-panel button{background:var(--green);color:var(--text);border:none;border-radius:var(--r);padding:4px 12px;cursor:pointer;font-size:12px}
+.exttile-panel button.exttile-cancel{background:#999}
+#layer-panel{width:220px;background:var(--green);color:var(--text);flex-shrink:0;display:flex;flex-direction:column;overflow-y:auto;box-shadow:-2px 0 8px rgba(0,0,0,.15);z-index:5}
+#layer-panel h2{font-size:13px;font-weight:700;padding:10px 12px 6px;border-bottom:1px solid rgba(255,255,255,.25);background:var(--green-dark)}
+.layer-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.1);font-size:12px;line-height:1.3;cursor:pointer}
+.layer-item:hover{background:rgba(255,255,255,.12)}
+.layer-item input[type=checkbox]{accent-color:#fff;width:14px;height:14px;cursor:pointer}
+.layer-opacity-btn{background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;padding:0 2px;opacity:.75;line-height:1}
+.layer-opacity-btn:hover{opacity:1}
+.layer-opacity{display:none;align-items:center;gap:8px;padding:4px 12px 8px 34px;border-bottom:1px solid rgba(255,255,255,.1)}
+.layer-opacity input[type=range]{flex:1;accent-color:#fff;cursor:pointer}
+.layer-opacity .layer-opacity-val{font-size:11px;min-width:34px;text-align:right;opacity:.9}
+.layer-legend{padding:2px 12px 6px 34px;border-bottom:1px solid rgba(255,255,255,.1)}
+.layer-legend.collapsed{display:none}
+.legend-item{display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px;line-height:1.4;color:var(--text)}
+.legend-swatch{flex-shrink:0;width:16px;height:16px;border-radius:2px;border:1px solid rgba(0,0,0,.2)}
+.legend-swatch.line{height:4px;border-radius:2px;border:none;margin-top:6px}
+.legend-swatch.circle{border-radius:50%}
+/* 線の色見本は中の SVG で描く。旧バージョンの printextension.js は
+   span の inline style（style.background）から色を読むため、色は
+   inline style にも入れたうえで、見た目だけ !important で消す。
+   （style.background は「インライン宣言の文字列」を返すので、
+     !important で描画を止めても旧JSは今までどおり色を取得できる） */
+.legend-swatch.swline{width:28px;height:12px;border:none;border-radius:0;
+  background:none !important;margin:0;display:inline-flex;align-items:center}
+.legend-swatch-line{display:block;width:100%;height:100%}
+.legend-label{opacity:.9}
+/* 凡例の内訳を開閉するボタン。レイヤの表示/非表示とは独立に動く */
+.legend-toggle{flex-shrink:0;width:16px;height:16px;margin-right:2px;padding:0;
+  border:none;background:none;color:var(--text);opacity:.65;cursor:pointer;
+  font-size:10px;line-height:16px;text-align:center}
+.legend-toggle:hover{opacity:1}
+.legend-toggle .count{display:none}
+#feature-search-bar{background:var(--green-dark);color:var(--text);display:flex;align-items:center;gap:6px;padding:5px 8px;flex-shrink:0;flex-wrap:wrap;z-index:10;font-size:12px;border-top:1px solid rgba(255,255,255,.18)}
+#feature-search-bar .fs-label{font-weight:700;white-space:nowrap}
+#feature-search-bar select,#feature-search-bar input{border:1px solid #ccd;border-radius:var(--r);padding:3px 6px;font-size:12px;font-family:var(--font);background:#fff;color:#222}
+#feature-search-bar #fs-input{flex:1;min-width:140px}
+#feature-search-bar button{background:var(--green);color:var(--text);border:none;border-radius:var(--r);padding:3px 12px;cursor:pointer;font-size:12px;white-space:nowrap}
+#feature-search-bar button:hover{background:var(--green)}
+#feature-search-bar #fs-status{opacity:.9;white-space:nowrap}
+#status-bar{min-height:30px;background:var(--green);display:flex;align-items:center;padding:4px 6px;flex-shrink:0;gap:6px;z-index:10}
+.status-cell{background:var(--green-dark);color:var(--text);border-radius:var(--r);padding:3px 12px;font-size:11px;white-space:nowrap}
+#source-group{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+#meter-group{flex-shrink:0;display:flex;flex-direction:column;gap:3px}
+.source-row{display:flex;align-items:stretch;gap:6px;min-width:0}
+.source-label{flex-shrink:0;font-weight:700;display:flex;align-items:center;justify-content:center;white-space:nowrap;letter-spacing:.5px}
+#attrib-cell{flex:1 1 auto;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+#basemap-cell{flex:1 1 auto;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;font-size:10.5px;opacity:.92}
+#zoom-cell{min-width:200px;text-align:right}
+#coord-cell{min-width:200px;text-align:right}
+#credit-bar{height:24px;background:var(--green-dark);color:var(--text);display:flex;align-items:center;justify-content:flex-end;padding:0 10px;font-size:11px;flex-shrink:0;z-index:10}
+.maplibregl-popup-content{font-family:var(--font);font-size:12px;padding:8px 12px;border-radius:4px;max-width:300px;max-height:240px;overflow-y:auto}
+.ptbl{border-collapse:collapse;width:100%}
+.ptbl td{padding:2px 4px;border-bottom:1px solid #eee}
+.pk{color:#1e5c2e;font-weight:700;white-space:nowrap}
+.maplibregl-ctrl-top-right{top:10px;right:10px}
+
+@media (max-width: 768px){
+
+  #main{
+    flex-direction: column;
+  }
+
+  #layer-panel{
+    position: absolute;
+    right: -240px;
+    top: 0;
+    height: 100%;
+    transition: right 0.3s;
+  }
+
+  #layer-panel.open{
+    right: 0;
+  }
+
+  #coord-cell{
+    display: none;
+  }
+
+  #zoom-cell{
+    min-width: auto;
+  }
+
+  .ctrl-btn{
+    min-width: auto;
+    padding: 6px 10px;
+  }
+}
+
+</style>
+<link rel="stylesheet" href="MaptureField/photo-extension.css" onerror="this.remove()"/>
+<script>
+(function(){
+  var s=document.createElement('script');
+  s.src='MaptureField/photo-extension.js';
+  document.head.appendChild(s);
+})();
+</script>
+<script>
+(function(){
+  var BASE="https://forestgeo.info/ForestGeoStudio";
+  var SPECS=[{"opt": 1, "file": "colorrelief-extension.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjEsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.HxqZmCCleGYcqKESQmYLOhb-Pjla4UAe8by9VO7zAgQ"}, {"opt": 1, "file": "sentinel-change.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjEsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.HxqZmCCleGYcqKESQmYLOhb-Pjla4UAe8by9VO7zAgQ"}, {"opt": 2, "file": "treesvg.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjIsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.QWF4sXMg0l3YVKTsPCY-gYte4PR9_jIlaPSafHiIjdM"}, {"opt": 2, "file": "print-extension.js", "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcHQiOjIsImlhdCI6MTc5MDMxMDAyMiwidiI6MX0.QWF4sXMg0l3YVKTsPCY-gYte4PR9_jIlaPSafHiIjdM"}];
+  function loadOne(s){
+    var url=BASE+'/js.php?opt='+s.opt+'&file='+encodeURIComponent(s.file);
+    return fetch(url,{headers:{'Authorization':'Bearer '+s.token}})
+      .then(function(r){ if(!r.ok){throw new Error(s.file+' '+r.status);} return r.text(); })
+      .then(function(code){
+        var el=document.createElement('script');
+        el.textContent=code;
+        document.head.appendChild(el);
+        return true;
+      })
+      .catch(function(e){ console.warn('[option] load failed:', e); return false; });
+  }
+  window.__optReady = Promise.all(SPECS.map(loadOne));
+})();
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="title-bar"><span id="title-text">台風25号による浸水状況｜千葉県印旛沼周辺</span><img id="title-logo" src="https://forestgeo.info/ForestGeoStudio/header.png" alt="ForestGeo Studio" onerror="this.style.display='none'"></div>
+  <div id="main">
+    <div id="map">
+      <div id="left-controls">
+       <button class="ctrl-btn" id="btn-layer-panel" onclick="toggleLayerPanel()">レイヤパネルON/OFF</button>
+        <button class="ctrl-btn" id="btn-tools" onclick="toggleToolGroup()">基本機能パネルON/OFF</button>
+        <div id="tool-group">
+        
+<button class="ctrl-btn" id="btn-addr" onclick="toggleAddr()">📒 住所検索</button>
+<div id="addr-panel" class="addr-panel">
+  <div class="addr-row">
+    <input id="addr-input" type="text" placeholder="住所・地名を入力" />
+    <button onclick="searchAddress()">検索</button>
+  </div>
+  <ul id="addr-results" class="addr-results"></ul>
+</div>
+        <button class="ctrl-btn" onclick="getLocation()">📌 現在地</button>
+        <button class="ctrl-btn" onclick="copyShareLink()">🔗 地図共有リンク</button>
+        <button class="ctrl-btn" id="btn-draw-point" onclick="setDrawMode('point')">✏️ ポイントを描く</button>
+<button class="ctrl-btn" id="btn-draw-line" onclick="setDrawMode('line')">✏️ ラインを描く</button>
+<button class="ctrl-btn" id="btn-draw-poly" onclick="setDrawMode('polygon')">✏️ ポリゴンを描く</button>
+<button class="ctrl-btn" onclick="clearDraw()">🗑️ 作図クリア</button>
+        <button class="ctrl-btn" onclick="exportDrawData()">💾 作図を保存</button>
+        
+<button class="ctrl-btn" onclick="document.getElementById('_geojson-input').click()">📂 外部データを読込</button>
+<input type="file" id="_geojson-input" accept=".geojson,.json,.kml,.gpx,.tif,.tiff,.pmtiles,.pmtile" multiple style="display:none" onchange="importExternal(event)"/>
+<script src="https://forestgeo.info/ForestGeoStudio/pmtiles.js" defer></script>
+
+        
+<button class="ctrl-btn" id="btn-exttile" onclick="toggleExtTilePanel()">🧩 外部タイルを追加</button>
+<div id="exttile-panel" class="exttile-panel">
+  <input id="exttile-url" type="text" placeholder="https://example.com/{z}/{x}/{y}.png" />
+  <div class="exttile-row">
+    <input id="exttile-name" type="text" placeholder="表示名（任意）" />
+  </div>
+  <div class="exttile-row">
+    <label>最小Z<input id="exttile-minz" type="number" min="0" max="24" step="1" placeholder="0" /></label>
+    <label>最大Z<input id="exttile-maxz" type="number" min="0" max="24" step="1" placeholder="22" /></label>
+  </div>
+  <div class="exttile-row exttile-actions">
+    <button onclick="addExternalTile()">追加</button>
+    <button class="exttile-cancel" onclick="toggleExtTilePanel()">閉じる</button>
+  </div>
+</div>
+
+        <button class="ctrl-btn" id="btn-3d" onclick="toggle3DView()">🏔️ 3Dビュー</button>
+        <button class="ctrl-btn" id="btn-split" onclick="toggleSplitView()">🟰 スプリットビュー</button>
+        </div>
+      </div>
+      <div id="map2"></div><div id="split-divider"><span class="split-handle">⇆</span></div>
+    </div>
+    <div id="layer-panel"><h2>レイヤ</h2><div id="layer-list"></div></div>
+  </div>
+  <div id="feature-search-bar"><span class="fs-label">🔍 属性検索</span><select id="fs-layer" title="検索対象レイヤ"></select><select id="fs-field" title="検索する属性フィールド"></select><input id="fs-input" type="text" placeholder="属性値（部分一致／数値は &gt;=100 等）" title="文字列は部分一致。数値フィールドは &gt; &gt;= &lt; &lt;= = != で検索できます（例: &gt;=100, &lt;50, =3）" /><button id="fs-go" onclick="runFeatureSearch()">検索</button><button id="fs-clear" onclick="clearFeatureSearch()">クリア</button><span id="fs-status"></span></div>
+  <div id="status-bar">
+    <div id="source-group">
+      <div class="source-row">
+        <div class="status-cell source-label">出典1</div>
+        <div class="status-cell" id="attrib-cell">国土地理院/台風第25号に関する情報｜EAS/Sentinel-1・SAR画像（9/24，19）</div>
+      </div>
+      <div class="source-row"><div class="status-cell source-label">出典2</div><div class="status-cell" id="basemap-cell" title="自動生成された出典">国土地理院/標準地図、全国最新写真、標高タイル ｜ Earth Search by Element 84/Sentinel-2 API</div></div>
+    </div>
+    <div id="meter-group">
+      <div class="status-cell" id="zoom-cell">ズームレベル：--</div>
+      <div class="status-cell" id="coord-cell">マウス座標</div>
+    </div>
+  </div>
+  <div id="credit-bar">Powered by&nbsp;
+   <a href="https://github.com/naokimuroki" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">
+   ForestGeo Studio</a>, &nbsp;
+   <a href="https://forestgeo.info/" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">
+   Forestgeo.info</a>, &nbsp;
+   <a href="https://maplibre.org/" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">
+   MapLibre GL JS</a>
+  </div>
+</div>
+
+<script>
+const map = new maplibregl.Map({
+  container: "map",
+  style: {
+    version: 8,
+    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+    sources: { "basemap":
+      {
+        "type": "raster",
+        "tiles": ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
+        "tileSize": 256,
+        "attribution": "国土地理院"
+      },"basemap2":
+      {
+        "type": "raster",
+        "tiles": ["https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg"],
+        "tileSize": 256,
+        "attribution": "国土地理院"
+      },
+      "terrain-dem": {
+        "type": "raster-dem",
+        "tiles": ["gsidem://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png"],
+        "tileSize": 256,
+        "encoding": "custom",
+        "redFactor": 655.36,
+        "greenFactor": 2.56,
+        "blueFactor": 0.01,
+        "baseShift": 0,
+        "attribution": "国土地理院（DEM5A）"
+      } },
+    layers: [ {"id":"basemap","type":"raster","source":"basemap"},{"id":"basemap2","type":"raster","source":"basemap2"} ]
+  },
+  center: [140.264821, 35.792303],
+  zoom: 10,
+  maxZoom: 20,
+  attributionControl: false
+});
+
+const sharedView = parseSharedView();
+if(sharedView) {
+  map.jumpTo(sharedView);
+}
+
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+map.addControl(new maplibregl.ScaleControl({maxWidth:120,unit:"metric"}), "bottom-left");
+
+// レイヤ種別に応じた *-opacity 系プロパティをまとめて設定する（透過率スライダー用）
+function setLayerOpacity(layerIds, v){
+  layerIds.forEach(id => {
+    const ly = map.getLayer(id);
+    if(!ly) return;
+    try {
+      switch(ly.type){
+        case "raster": map.setPaintProperty(id, "raster-opacity", v); break;
+        case "fill": map.setPaintProperty(id, "fill-opacity", v); break;
+        case "line": map.setPaintProperty(id, "line-opacity", v); break;
+        case "circle":
+          map.setPaintProperty(id, "circle-opacity", v);
+          map.setPaintProperty(id, "circle-stroke-opacity", v);
+          break;
+        case "symbol":
+          map.setPaintProperty(id, "icon-opacity", v);
+          map.setPaintProperty(id, "text-opacity", v);
+          break;
+        case "fill-extrusion": map.setPaintProperty(id, "fill-extrusion-opacity", v); break;
+      }
+    } catch(e) { /* データ駆動式などで設定不可なら無視 */ }
+  });
+}
+
+function addToggle(ids, name, kind, legend, initialVisible){
+  const list = document.getElementById("layer-list");
+  if(!list) return;
+  const layerIds = Array.isArray(ids) ? ids : [ids];
+  // initialVisible が明示的に false の場合は非表示スタート
+  const startVisible = (initialVisible !== false);
+  let inlineSwatchAdded = false;
+
+  // --- チェックボックス行 ---
+  const label = document.createElement("label");
+  label.className = "layer-item";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = startVisible;
+  // 初期非表示の場合はマップレイヤも非表示に設定
+  if (!startVisible) {
+    layerIds.forEach(id => {
+      if(map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+    });
+  }
+  checkbox.onchange = () => {
+    const vis = checkbox.checked ? "visible" : "none";
+    layerIds.forEach(id => {
+      if(map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+    });
+    if(label.__syncLegend) label.__syncLegend();
+    // 単木SVGアイコン: 3D表示中の ON/OFF を symbol レイヤにも反映させる
+    if(window.__treeSvgReapply) window.__treeSvgReapply();
+  };
+  const span = document.createElement("span");
+  span.textContent = name;
+  label.appendChild(checkbox);
+  label.appendChild(span);
+
+  // --- 凡例行（色分けルールがある or 単色でも shape を表示） ---
+  let legendDiv = null;
+  let legendExpanded = true;
+
+  // 破線の縮尺。dasharray は「線幅の倍数」なので、そのまま px に直すと
+  // 長い破線が色見本の幅に1周期しか入らず実線に見えてしまう。
+  // 凡例全体で共通の係数を使い、いちばん長いパターンでも2周期は入るようにする。
+  // 共通係数なので「短い破線／長い破線」の違いはそのまま残る。
+  const SWATCH_W = 28, SWATCH_H = 12, SWATCH_SW = 2.5;
+  function dashScaleFor(items){
+    let maxTotal = 0;
+    (items || []).forEach(it => {
+      if(Array.isArray(it.dash) && it.dash.length >= 2){
+        const total = it.dash.reduce((a, b) => a + b, 0);
+        if(total > maxTotal) maxTotal = total;
+      }
+    });
+    if(!maxTotal) return SWATCH_SW;
+    return Math.min(SWATCH_SW, SWATCH_W / (2 * maxTotal));
+  }
+  const dashScale = dashScaleFor(legend);
+
+  // 色見本を作る。線は SVG で描いて実線・破線・点線を見分けられるようにする。
+  // 色見本は必ず <span class="legend-swatch ..."> を外側に置く。
+  // 印刷オプション（printextension.js）など外部JSがこのDOMを走査して
+  // 凡例を組み立てるため、要素の型を変えると古いJSが動かなくなる。
+  //   * SVG要素の className は文字列ではない（SVGAnimatedString）ので、
+  //     `sw.className.indexOf(...)` を使う既存JSが例外で止まる
+  //   * `span.legend-swatch` というセレクタにも当たらなくなる
+  // そこで線種を描くSVGは span の**中**に入れ、色・形・線種は
+  // data-* 属性でも渡す（新しいJSはこちらを読めば確実）。
+  function makeSwatch(item, small){
+    const shape = item.shape || "fill";
+    const el = document.createElement("span");
+    el.className = "legend-swatch " + shape;
+    el.setAttribute("data-shape", shape);
+    el.setAttribute("data-color", item.color || "");
+    if(shape === "line"){
+      const w = small ? 22 : SWATCH_W, h = small ? 10 : SWATCH_H;
+      el.classList.add("swline");
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "legend-swatch-line");
+      svg.setAttribute("width", w);
+      svg.setAttribute("height", h);
+      svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+      const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      ln.setAttribute("x1", 0); ln.setAttribute("y1", h / 2);
+      ln.setAttribute("x2", w); ln.setAttribute("y2", h / 2);
+      ln.setAttribute("stroke", item.color);
+      ln.setAttribute("stroke-width", small ? 2 : SWATCH_SW);
+      ln.setAttribute("stroke-linecap", "butt");
+      if(Array.isArray(item.dash) && item.dash.length >= 2){
+        const px = item.dash.map(v => +(v * dashScale).toFixed(2));
+        ln.setAttribute("stroke-dasharray", px.join(" "));
+        // 線幅の倍数（元の値）を渡す。印刷側で紙面寸法へ組み直せるように。
+        el.setAttribute("data-dash", item.dash.join(","));
+      }
+      svg.appendChild(ln);
+      el.appendChild(svg);
+      // 旧 printextension.js は span の inline style から色を読むため、
+      // 互換用に色を入れておく（描画は CSS の background:none !important で抑止）。
+      el.style.background = item.color || "";
+      return el;
+    }
+    el.style.background = item.color;
+    if(small){ el.style.width = "12px"; el.style.height = "12px"; }
+    return el;
+  }
+
+  if(legend && legend.length > 0) {
+    // 単色・ラベルなしの場合は小さいスウォッチのみ（行内に折りたたまない）
+    const isSingle = legend.length === 1 && !legend[0].label;
+    if(isSingle) {
+      // チェックボックス行の右側に小スウォッチを埋め込む
+      const sw = makeSwatch(legend[0], true);
+      sw.style.marginLeft = "auto";
+      label.appendChild(sw);
+      inlineSwatchAdded = true;
+    } else {
+      // 複数ルール → 凡例ブロック
+      legendDiv = document.createElement("div");
+      legendDiv.className = "layer-legend";
+      legend.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "legend-item";
+        const lbl = document.createElement("span");
+        lbl.className = "legend-label";
+        lbl.textContent = item.label;
+        row.appendChild(makeSwatch(item, false));
+        row.appendChild(lbl);
+        legendDiv.appendChild(row);
+      });
+    }
+  }
+
+  // --- 凡例の内訳を開閉するボタン ---
+  // レイヤの表示/非表示（チェックボックス）とは独立。区分が多いスタイルで
+  // パネルが埋まるのを、レイヤを消さずに畳んで防ぐ。
+  if(legendDiv){
+    const LEGEND_AUTO_COLLAPSE = 8;   // これを超える区分数なら初めから畳む
+    legendExpanded = legend.length <= LEGEND_AUTO_COLLAPSE;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "legend-toggle";
+    function syncLegend(){
+      const show = legendExpanded && checkbox.checked;
+      legendDiv.classList.toggle("collapsed", !show);
+      toggle.textContent = legendExpanded ? "▾" : "▸";
+      toggle.title = legendExpanded ? "凡例の内訳を隠す" : "凡例の内訳を表示";
+    }
+    toggle.onclick = (ev) => {
+      // ラベル内のボタンなのでチェックボックスのトグルを止める
+      ev.preventDefault();
+      ev.stopPropagation();
+      legendExpanded = !legendExpanded;
+      syncLegend();
+    };
+    label.insertBefore(toggle, label.firstChild);
+    label.__syncLegend = syncLegend;
+    list.appendChild(label);
+    list.appendChild(legendDiv);
+    syncLegend();
+  } else {
+    list.appendChild(label);
+  }
+
+  // --- 透過率（不透明度）ボタン＋スライダー ---
+  // 各レイヤ行に「◐」ボタンを置き、押すと下にスライダーが開く。
+  const opacBtn = document.createElement("button");
+  opacBtn.type = "button";
+  opacBtn.className = "layer-opacity-btn";
+  opacBtn.textContent = "◐";
+  opacBtn.title = "透過率を調整";
+  opacBtn.style.marginLeft = inlineSwatchAdded ? "6px" : "auto";
+  // ボタンのクリックがチェックボックス(label)のトグルを誘発しないよう抑止
+  opacBtn.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    opacRow.style.display = (opacRow.style.display === "none") ? "flex" : "none";
+  });
+  label.appendChild(opacBtn);
+
+  const opacRow = document.createElement("div");
+  opacRow.className = "layer-opacity";
+  opacRow.style.display = "none";
+  const slider = document.createElement("input");
+  slider.type = "range";
+  slider.min = "0"; slider.max = "100"; slider.value = "100";
+  const valLbl = document.createElement("span");
+  valLbl.className = "layer-opacity-val";
+  valLbl.textContent = "100%";
+  slider.addEventListener("input", () => {
+    const v = Number(slider.value) / 100;
+    valLbl.textContent = slider.value + "%";
+    setLayerOpacity(layerIds, v);
+  });
+  opacRow.appendChild(slider);
+  opacRow.appendChild(valLbl);
+  list.appendChild(opacRow);
+
+  // 地図共有リンクで表示設定を復元できるよう、トグル情報を登録順に保持する
+  (window.__toggles = window.__toggles || []).push({ layerIds: layerIds, checkbox: checkbox, slider: slider });
+}
+
+function toggleLayerPanel(){
+  const panel = document.getElementById("layer-panel");
+  if(!panel) return;
+  panel.classList.toggle("open");
+}
+
+function toggleToolGroup(){
+  const g = document.getElementById("tool-group");
+  if(!g) return;
+  g.classList.toggle("collapsed");
+}
+
+// ---------------------------------------------------------------
+// FlatGeobuf ストリーミングローダー
+// bbox（現在の表示範囲）に絞って fgb をフェッチし GeoJSON ソースを更新する。
+// HTTP/HTTPS サーバー上のファイルでは byte-range リクエストが有効になり
+// 表示範囲外のフィーチャーは転送されない。
+// ---------------------------------------------------------------
+async function loadFgbLayer(map, layerId, url, styleLayers, initialVisible) {
+  // 空の GeoJSON ソースを登録
+  // 1件でも失敗すると呼び出し元（load ハンドラ）が止まり、
+  // 以降のレイヤもレイヤパネルも作られなくなるため、必ず握る。
+  try {
+    map.addSource(layerId, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] }
+    });
+  } catch(e) {
+    console.error("[fgb] ソースの追加に失敗:", layerId, e);
+  }
+
+  // スタイルレイヤを追加
+  styleLayers.forEach(ld => {
+    try { map.addLayer(ld); }
+    catch(e) { console.error("[fgb] レイヤの追加に失敗:", ld && ld.id, e); }
+  });
+
+  // 初期表示設定
+  if (initialVisible === false) {
+    styleLayers.forEach(ld => {
+      if (map.getLayer(ld.id)) map.setLayoutProperty(ld.id, "visibility", "none");
+    });
+  }
+
+  let _loading = false;
+  let _treeChecked = false;   // 単木アイコン判定を済ませたか（取得地物で一度だけ）
+
+  async function fetchAndUpdate() {
+    if (_loading) return;
+    _loading = true;
+    try {
+      const bounds = map.getBounds();
+      const rect = {
+        minX: bounds.getWest(),
+        minY: bounds.getSouth(),
+        maxX: bounds.getEast(),
+        maxY: bounds.getNorth()
+      };
+      const features = [];
+      // flatgeobuf.deserialize は bbox を渡すと byte-range で部分取得する
+      for await (const f of flatgeobuf.deserialize(url, rect)) {
+        features.push(f);
+      }
+      const src = map.getSource(layerId);
+      if (src) src.setData({ type: "FeatureCollection", features });
+
+      // 単木アイコン: Point レイヤに「樹高」属性があれば 3D で樹木アイコン化する。
+      // 取得した実地物を直接渡して判定（querySourceFeatures の描画待ちを避ける）。
+      // 初回の取得が空（範囲外）でも、地物が取れた最初の機会に一度だけ判定する。
+      if (!_treeChecked && features.length && window.__treeSvgConsiderGeojsonLayer) {
+        const _circ = (styleLayers.find(ld => ld.type === "circle") || {}).id;
+        if (_circ) {
+          _treeChecked = true;
+          window.__treeSvgConsiderGeojsonLayer({
+            circle_id: _circ,
+            symbol_id: _circ + "_tree",
+            source: layerId,
+            features: features
+          });
+        }
+      }
+    } catch(e) {
+      console.warn("[fgb] fetch error:", layerId, e);
+    } finally {
+      _loading = false;
+    }
+  }
+
+  await fetchAndUpdate();
+  map.on("moveend", fetchAndUpdate);
+
+  // スプリットビュー等で別マップにも同じデータを流せるよう設定を控えておく
+  (window.__fgbStreams = window.__fgbStreams || []).push({ layerId: layerId, url: url });
+}
+
+// 既存のソース（複製スタイル等で既に登録済み）に対し、bbox 絞り込みの
+// FlatGeobuf ストリーミングだけを後付けする。スプリットビューの固定側マップ用。
+window.__streamFgbInto = function(targetMap, layerId, url) {
+  let _loading = false;
+  async function fetchAndUpdate() {
+    if (_loading) return;
+    _loading = true;
+    try {
+      const b = targetMap.getBounds();
+      const rect = { minX: b.getWest(), minY: b.getSouth(), maxX: b.getEast(), maxY: b.getNorth() };
+      const features = [];
+      for await (const f of flatgeobuf.deserialize(url, rect)) { features.push(f); }
+      const src = targetMap.getSource(layerId);
+      if (src) src.setData({ type: "FeatureCollection", features });
+    } catch(e) { /* 固定側の取得失敗は無視 */ }
+    finally { _loading = false; }
+  }
+  fetchAndUpdate();
+  targetMap.on("moveend", fetchAndUpdate);
+};
+
+// 操作系レイヤ（描画・面積・距離・路網）を最前面へ。
+// 微地形/段彩などの保護JSラスタが後から追加され上に被さるのを防ぐ。
+function _raiseOverlays() {
+  try {
+    var prefixes = ["_area-", "_dist-", "_draw-", "_import-", "roadsim-", "cablesim-"];
+    (map.getStyle().layers || []).forEach(function (l) {
+      for (var i = 0; i < prefixes.length; i++) {
+        if (l.id.indexOf(prefixes[i]) === 0) { try { map.moveLayer(l.id); } catch (e) {} break; }
+      }
+    });
+  } catch (e) {}
+}
+
+map.on("load", async () => {
+  window.forestGeoStudioMap = map;
+  window.qgis2maplibreProMap = map; // 後方互換（旧名称）
+  window.qgis2maplibreMap = map;    // 後方互換（旧名称）
+  // 保護JS（オプション）の読込完了を待ってから初期化する
+  if(window.__optReady) { try { await window.__optReady; } catch(e) {} }
+  if(!sharedView) {
+    map.fitBounds([[140.127005,35.723991],[140.402637,35.860615]]);
+  }
+
+  // 3D地形: スカイレイヤ追加（大気感の演出）
+  if (!map.getLayer('sky')) {
+    map.addLayer({
+      id: 'sky',
+      type: 'sky',
+      paint: {
+        'sky-type': 'atmosphere',
+        'sky-atmosphere-sun': [0.0, 0.0],
+        'sky-atmosphere-sun-intensity': 15
+      }
+    });
+  }
+  // 段彩陰影図を追加（微地形群・最下層）
+  if (typeof ColorreliefExtension !== 'undefined') {
+    ColorreliefExtension.addToMap(map);
+  }
+
+  // Sentinel-2 変化解析（オプション1）: sentinel-change.js があれば有効化
+  if (typeof SentinelChangeExtension !== 'undefined') {
+    try { SentinelChangeExtension.enable(map, {"theme": {"main": "#18448E", "dark": "#213A70"}}); }
+    catch(e){ console.warn('[sentinel] init failed', e); }
+  }
+
+          try {
+            map.addSource("layer", {
+              type: "raster",
+              tiles: ["https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png"],
+              tileSize: 256
+            });
+          } catch(e) { console.error("[source] 追加に失敗:", "layer", e); }
+        
+          try {
+            map.addSource("SAR_9_24_9_19", {
+              type: "raster",
+              tiles: ["https://forestgeo.info/20260924chiba/sar/{z}/{x}/{y}.webp"],
+              tileSize: 256
+            });
+          } catch(e) { console.error("[source] 追加に失敗:", "SAR_9_24_9_19", e); }
+          try { map.addLayer({"id": "layer", "type": "raster", "source": "layer", "minzoom": 0.0, "maxzoom": 24.0, "paint": {"raster-opacity": 0.8}}); }
+  catch(e){ console.error('[layer] 追加に失敗:', "layer", e); }
+  try { map.addLayer({"id": "SAR_9_24_9_19", "type": "raster", "source": "SAR_9_24_9_19", "minzoom": 0.0, "maxzoom": 24.0, "paint": {"raster-opacity": 0.8}}); }
+  catch(e){ console.error('[layer] 追加に失敗:', "SAR_9_24_9_19", e); }
+  try { await loadFgbLayer(map, "layer_2", "%E5%9B%BD%E5%9C%9F%E5%9C%B0%E7%90%86%E9%99%A2%E3%83%BB%E6%B5%B8%E6%B0%B4%E5%88%A4%E8%AA%AD%E5%9B%B3.fgb", [{"id": "layer_2", "type": "fill", "source": "layer_2", "minzoom": 8.0, "maxzoom": 24.0, "paint": {"fill-color": "#ffff00", "fill-opacity": 2.7755575615628914e-17}}, {"id": "layer_2_outline", "type": "line", "source": "layer_2", "paint": {"line-color": "#ffff00", "line-width": 1.0, "line-opacity": 1.0}, "minzoom": 8.0, "maxzoom": 24.0}], true); }
+  catch(e){ console.error('[fgb] 読み込みに失敗:', "layer_2", e); }
+
+  // 印刷レイアウト（オプション2）: print-extension.js があれば有効化
+  if (typeof PrintExtension !== 'undefined') {
+    try { PrintExtension.enable(map, {"theme": {"main": "#18448E", "dark": "#213A70", "text": "#ffffff"}, "source": "国土地理院/台風第25号に関する情報｜EAS/Sentinel-1・SAR画像（9/24，19）", "legend": [{"name": "国土地理院・浸水判読図", "items": [{"label": "", "color": "#ffff00", "shape": "fill"}], "visible": true}]}); }
+    catch(e){ console.warn('[print] init failed', e); }
+  }
+
+  if (map.getLayer("basemap")) addToggle(["basemap"], "国土地理院・標準地図", 'raster', [], true);
+  if (map.getLayer("basemap2")) addToggle(["basemap2"], "国土地理院・全国最新写真", 'raster', [], false);
+  if (typeof ColorreliefExtension !== 'undefined') {
+    addToggle(['colorrelief1a-layer'], '段彩陰影図', 'raster',
+      [{"label":"","color":"#BF7834","shape":"fill"}], false);
+  }
+  try { addToggle(["layer"], "国土地理院・洪水浸水想定区域（想定最大規模）", "raster", [], false); }
+  catch(e){ console.error('[panel] 追加に失敗:', "国土地理院・洪水浸水想定区域（想定最大規模）", e); }
+  try { addToggle(["SAR_9_24_9_19"], "SAR解析（9/24-9/19）", "raster", [], true); }
+  catch(e){ console.error('[panel] 追加に失敗:', "SAR解析（9/24-9/19）", e); }
+  try { addToggle(["layer_2", "layer_2_outline"], "国土地理院・浸水判読図", "polygon", [{"label": "", "color": "#ffff00", "shape": "fill"}], true); }
+  catch(e){ console.error('[panel] 追加に失敗:', "国土地理院・浸水判読図", e); }
+
+  // 地図共有リンクで指定されたレイヤ表示設定（ON/OFF・不透明度）を復元
+  if(window.applySharedLayerState) window.applySharedLayerState();
+  // 単木SVGアイコン: ソース追加後・保護JS読込後に初期化
+  if(window.__treeSvgInit) window.__treeSvgInit();
+  // 描画・計測・路網などの操作系レイヤを最前面へ（微地形/段彩ラスタに隠れないように）
+  _raiseOverlays();
+  map.once("idle", _raiseOverlays);
+});
+
+
+const POPUP_LAYERS = ["layer_2"];
+const VT_POPUP_LAYERS = [];
+const POINT_LAYERS = [];
+
+const popup = new maplibregl.Popup({
+  closeButton: true,
+  maxWidth: "320px"
+});
+
+function buildPopupHTML(props) {
+  const rows = Object.entries(props)
+    .filter(([k]) => !k.startsWith("_"))
+    .map(([key, value]) => `<tr><td class="pk">${key}</td><td>${value ?? ""}</td></tr>`)
+    .join("");
+  return rows ? `<table class="ptbl">${rows}</table>` : "<em>属性なし</em>";
+}
+
+// ポイントレイヤ: 広めのbbox（±10px）で感度を高め、ポリゴンより優先処理
+POINT_LAYERS.forEach(layerId => {
+  map.on("click", e => {
+    if (window.__statsActive) return;  // 属性集計モード中はポップアップ抑止
+    const bbox = [
+      [e.point.x - 10, e.point.y - 10],
+      [e.point.x + 10, e.point.y + 10]
+    ];
+    const features = map.queryRenderedFeatures(bbox, { layers: [layerId] });
+    if (!features || !features.length) return;
+    const props = features[0].properties || {};
+    popup.setLngLat(e.lngLat)
+      .setHTML(buildPopupHTML(props))
+      .addTo(map);
+    e.originalEvent._pointPopupShown = true;  // ポリゴン側でスキップするフラグ
+  });
+  map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
+});
+
+// ポイント以外のレイヤ: ポイントポップアップが既に表示されていたらスキップ
+const NON_POINT_LAYERS = POPUP_LAYERS.filter(id => !POINT_LAYERS.includes(id));
+NON_POINT_LAYERS.forEach(layerId => {
+  map.on("click", layerId, e => {
+    if (window.__statsActive) return;  // 属性集計モード中はポップアップ抑止
+    if (e.originalEvent._pointPopupShown) return;  // ポイント優先
+    if (!e.features || !e.features.length) return;
+    const props = e.features[0].properties || {};
+    popup.setLngLat(e.lngLat)
+      .setHTML(buildPopupHTML(props))
+      .addTo(map);
+  });
+  map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
+});
+
+VT_POPUP_LAYERS.forEach(layerId => {
+  map.on("click", layerId, e => {
+    if (window.__statsActive) return;  // 属性集計モード中はポップアップ抑止
+    if (e.originalEvent._pointPopupShown) return;
+    if (!e.features || !e.features.length) return;
+    const props = e.features[0].properties || {};
+    popup.setLngLat(e.lngLat)
+      .setHTML(buildPopupHTML(props))
+      .addTo(map);
+  });
+  map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
+});
+
+
+map.on("mousemove", e => {
+  document.getElementById("coord-cell").textContent =
+    "経度: " + e.lngLat.lng.toFixed(5) + "  緯度: " + e.lngLat.lat.toFixed(5);
+});
+
+function _updateZoomCell(){
+  var el = document.getElementById("zoom-cell");
+  if(!el) return;
+  el.textContent = "ズームレベル：" + (Math.round(map.getZoom() * 10) / 10).toFixed(1);
+}
+map.on("zoom", _updateZoomCell);
+map.on("load", _updateZoomCell);
+_updateZoomCell();
+
+function toggleAddr(){
+  document.getElementById("addr-panel").classList.toggle("open");
+}
+async function searchAddress(){
+  const q = document.getElementById("addr-input").value.trim();
+  const list = document.getElementById("addr-results");
+  if(!q) return;
+  list.innerHTML = '<li class="addr-msg">検索中…</li>';
+  let data;
+  try{
+    const res = await fetch("https://msearch.gsi.go.jp/address-search/AddressSearch?q=" + encodeURIComponent(q));
+    data = await res.json();
+  }catch(e){
+    list.innerHTML = '<li class="addr-msg">検索に失敗しました</li>';
+    return;
+  }
+  if(!Array.isArray(data) || !data.length){
+    list.innerHTML = '<li class="addr-msg">住所が見つかりませんでした</li>';
+    return;
+  }
+  list.innerHTML = "";
+  data.forEach(function(f){
+    const c = f.geometry && f.geometry.coordinates;
+    if(!c) return;
+    const title = (f.properties && f.properties.title) || (c[1].toFixed(5) + ", " + c[0].toFixed(5));
+    const li = document.createElement("li");
+    li.textContent = title;
+    li.onclick = function(){ goToAddr(c[0], c[1], title); };
+    list.appendChild(li);
+  });
+  // 候補が1件だけなら従来どおり自動でジャンプ
+  if(data.length === 1){
+    const c = data[0].geometry.coordinates;
+    goToAddr(c[0], c[1], (data[0].properties && data[0].properties.title) || "");
+  }
+}
+function goToAddr(lng, lat, title){
+  map.flyTo({ center: [lng, lat], zoom: 14 });
+  if(window._addrMk) window._addrMk.remove();
+  window._addrMk = new maplibregl.Marker({ color: "#c84b31" })
+    .setLngLat([lng, lat])
+    .setPopup(new maplibregl.Popup().setText(title || ""))
+    .addTo(map)
+    .togglePopup();
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("addr-input");
+  if(input) input.addEventListener("keydown", e => { if(e.key === "Enter") searchAddress(); });
+});
+
+function getLocation(){
+  if(!navigator.geolocation){ alert("現在地を取得できません"); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { longitude: lng, latitude: lat } = pos.coords;
+    map.flyTo({ center: [lng, lat], zoom: 14 });
+    if(window._gpsMk) window._gpsMk.remove();
+    window._gpsMk = new maplibregl.Marker({ color: "#2d8a4e" })
+      .setLngLat([lng, lat])
+      .setPopup(new maplibregl.Popup().setText("現在地"))
+      .addTo(map)
+      .togglePopup();
+  }, err => alert("現在地取得失敗: " + err.message));
+}
+
+// 地図共有リンク: 表示位置に加え、レイヤパネルの表示設定（ON/OFF・不透明度・
+// ベースマップ選択）も記録して復元する。
+// ハッシュ形式: #zoom/lng/lat[/v<可視ビット列>][/o<idx.値-idx.値...>]
+function parseSharedView(){
+  const hash = window.location.hash.replace(/^#/, "");
+  let parts = hash.split("/");
+  let zoom, lng, lat, rest = [];
+  if(parts.length >= 3 && parts[0] !== "" && !isNaN(Number(parts[0]))){
+    zoom = Number(parts[0]); lng = Number(parts[1]); lat = Number(parts[2]);
+    rest = parts.slice(3);
+  } else {
+    // 旧式（パス末尾 .html/zoom/lng/lat）との互換
+    const m = window.location.pathname.match(/\.html\/(\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)\/?$/);
+    if(!m) return null;
+    zoom = Number(m[1]); lng = Number(m[2]); lat = Number(m[3]);
+  }
+  if(!Number.isFinite(zoom) || !Number.isFinite(lng) || !Number.isFinite(lat)) return null;
+  if(lng < -180 || lng > 180 || lat < -90 || lat > 90) return null;
+
+  // レイヤ表示設定セグメントを抽出
+  let st = null;
+  rest.forEach(p => {
+    if(p.charAt(0) === "v"){ st = st || {}; st.vis = p.slice(1); }
+    else if(p.charAt(0) === "o"){ st = st || {}; st.opac = p.slice(1); }
+  });
+  if(st) window.__sharedLayerState = st;
+
+  return { center: [lng, lat], zoom };
+}
+
+function _encodeLayerState(){
+  const tg = window.__toggles || [];
+  if(!tg.length) return "";
+  let vis = "", opac = [];
+  tg.forEach((t, i) => {
+    vis += (t.checkbox && t.checkbox.checked) ? "1" : "0";
+    if(t.slider){
+      const ov = Math.round(Number(t.slider.value));
+      if(ov !== 100) opac.push(i + "." + ov);
+    }
+  });
+  let seg = "";
+  if(/0/.test(vis)) seg += "/v" + vis;          // すべて表示中なら省略
+  if(opac.length)   seg += "/o" + opac.join("-");
+  return seg;
+}
+
+function applySharedLayerState(){
+  const st = window.__sharedLayerState;
+  if(!st) return;
+  const tg = window.__toggles || [];
+  if(st.vis){
+    for(let i = 0; i < tg.length && i < st.vis.length; i++){
+      const want = st.vis.charAt(i) === "1";
+      const cb = tg[i].checkbox;
+      if(cb && cb.checked !== want){
+        cb.checked = want;
+        cb.dispatchEvent(new Event("change"));
+      }
+    }
+  }
+  if(st.opac){
+    st.opac.split("-").forEach(pair => {
+      const dot = pair.indexOf(".");
+      if(dot < 0) return;
+      const i = Number(pair.slice(0, dot)), v = Number(pair.slice(dot + 1));
+      const t = tg[i];
+      if(t && t.slider && Number.isFinite(v)){
+        t.slider.value = String(v);
+        t.slider.dispatchEvent(new Event("input"));
+      }
+    });
+  }
+}
+window.applySharedLayerState = applySharedLayerState;
+
+function currentShareLink(){
+  const c = map.getCenter();
+  const z = Math.round(map.getZoom() * 100) / 100;
+  const lng = Math.round(c.lng * 100000) / 100000;
+  const lat = Math.round(c.lat * 100000) / 100000;
+  const base = window.location.href.split("#")[0].replace(/\.html\/.*$/, ".html");
+  return `${base}#${z}/${lng}/${lat}${_encodeLayerState()}`;
+}
+
+async function copyShareLink(){
+  const url = currentShareLink();
+  try {
+    await navigator.clipboard.writeText(url);
+    alert("地図共有リンクをコピーしました\n" + url);
+  } catch(e) {
+    window.prompt("地図共有リンクをコピーしてください", url);
+  }
+}
+
+
+
+
+// ========== 作図機能 ==========
+let _drawMode = null;
+let _drawFeatures = [];
+let _drawTempPoints = [];
+let _drawTempMarkers = [];
+const _DRAW_BTNS = { point: "btn-draw-point", line: "btn-draw-line", polygon: "btn-draw-poly" };
+
+map.on("load", () => {
+  map.addSource("_draw-src", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({ id: "_draw-fill", type: "fill", source: "_draw-src",
+    filter: ["==", "$type", "Polygon"],
+    paint: { "fill-color": "#9933ff", "fill-opacity": 0.3 } });
+  map.addLayer({ id: "_draw-line", type: "line", source: "_draw-src",
+    filter: ["in", "$type", "LineString", "Polygon"],
+    paint: { "line-color": "#9933ff", "line-width": 2 } });
+  map.addLayer({ id: "_draw-circle", type: "circle", source: "_draw-src",
+    filter: ["==", "$type", "Point"],
+    paint: { "circle-color": "#9933ff", "circle-radius": 6, "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
+});
+
+function setDrawMode(mode) {
+  // 未完了の一時描画をキャンセル
+  _cancelDrawTemp();
+  if (_drawMode === mode) {
+    _drawMode = null;
+    map.getCanvas().style.cursor = "";
+    Object.values(_DRAW_BTNS).forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.background = "var(--green)";
+    });
+    return;
+  }
+  _drawMode = mode;
+  map.getCanvas().style.cursor = "crosshair";
+  Object.entries(_DRAW_BTNS).forEach(([m, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.background = m === mode ? "var(--green-dark)" : "var(--green)";
+  });
+}
+
+function _cancelDrawTemp() {
+  _drawTempPoints = [];
+  _drawTempMarkers.forEach(m => m.remove());
+  _drawTempMarkers = [];
+}
+
+function _refreshDraw() {
+  map.getSource("_draw-src").setData({ type: "FeatureCollection", features: _drawFeatures });
+}
+
+map.on("click", e => {
+  if (!_drawMode) return;
+  if (_drawMode === "point") {
+    _drawFeatures.push({ type: "Feature", geometry: { type: "Point", coordinates: [e.lngLat.lng, e.lngLat.lat] }, properties: {} });
+    _refreshDraw();
+    return;
+  }
+  _drawTempPoints.push([e.lngLat.lng, e.lngLat.lat]);
+  const mk = new maplibregl.Marker({ color: "#9933ff", scale: 0.6 }).setLngLat(e.lngLat).addTo(map);
+  _drawTempMarkers.push(mk);
+});
+
+map.on("dblclick", e => {
+  if (!_drawMode || _drawMode === "point") return;
+  e.preventDefault();
+  const pts = _drawTempPoints;
+  if (_drawMode === "line" && pts.length >= 2) {
+    _drawFeatures.push({ type: "Feature", geometry: { type: "LineString", coordinates: pts }, properties: {} });
+  } else if (_drawMode === "polygon" && pts.length >= 3) {
+    _drawFeatures.push({ type: "Feature", geometry: { type: "Polygon", coordinates: [[...pts, pts[0]]] }, properties: {} });
+  }
+  _cancelDrawTemp();
+  _refreshDraw();
+});
+
+function clearDraw() {
+  _cancelDrawTemp();
+  _drawFeatures = [];
+  _refreshDraw();
+  setDrawMode(null);
+}
+
+
+// ========== GeoJSON <-> KML / GPX 変換 ==========
+function _xmlEsc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&apos;"}[c]; }); }
+function _n6(n){ return Math.round(n*1e6)/1e6; }
+
+// --- GeoJSON features -> KML ---
+function featuresToKML(features){
+  function cs(c){ return _n6(c[0])+","+_n6(c[1])+","+(c.length>2&&isFinite(c[2])?_n6(c[2]):0); }
+  function ring(r){ return r.map(cs).join(" "); }
+  function polyKML(rings){
+    var o="<outerBoundaryIs><LinearRing><coordinates>"+ring(rings[0])+"</coordinates></LinearRing></outerBoundaryIs>";
+    var inr=rings.slice(1).map(function(r){ return "<innerBoundaryIs><LinearRing><coordinates>"+ring(r)+"</coordinates></LinearRing></innerBoundaryIs>"; }).join("");
+    return "<Polygon>"+o+inr+"</Polygon>";
+  }
+  function geomKML(g){
+    if(!g) return "";
+    if(g.type==="Point") return "<Point><coordinates>"+cs(g.coordinates)+"</coordinates></Point>";
+    if(g.type==="MultiPoint") return "<MultiGeometry>"+g.coordinates.map(function(c){return "<Point><coordinates>"+cs(c)+"</coordinates></Point>";}).join("")+"</MultiGeometry>";
+    if(g.type==="LineString") return "<LineString><tessellate>1</tessellate><coordinates>"+ring(g.coordinates)+"</coordinates></LineString>";
+    if(g.type==="MultiLineString") return "<MultiGeometry>"+g.coordinates.map(function(l){return "<LineString><tessellate>1</tessellate><coordinates>"+ring(l)+"</coordinates></LineString>";}).join("")+"</MultiGeometry>";
+    if(g.type==="Polygon") return polyKML(g.coordinates);
+    if(g.type==="MultiPolygon") return "<MultiGeometry>"+g.coordinates.map(polyKML).join("")+"</MultiGeometry>";
+    if(g.type==="GeometryCollection") return "<MultiGeometry>"+g.geometries.map(geomKML).join("")+"</MultiGeometry>";
+    return "";
+  }
+  var pms=features.map(function(f,i){
+    var nm=(f.properties&&(f.properties.name||f.properties.title))||("feature"+(i+1));
+    return "<Placemark><name>"+_xmlEsc(nm)+"</name>"+geomKML(f.geometry)+"</Placemark>";
+  }).join("");
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document>'+pms+'</Document></kml>';
+}
+
+// --- GeoJSON features -> GPX（点=wpt, 線=trk, ポリゴン=各リングを閉trk） ---
+function featuresToGPX(features){
+  function ele(c){ return (c.length>2&&isFinite(c[2]))?"<ele>"+_n6(c[2])+"</ele>":""; }
+  function wpt(c){ return '<wpt lat="'+_n6(c[1])+'" lon="'+_n6(c[0])+'">'+ele(c)+'</wpt>'; }
+  function trk(coords){ return "<trk><trkseg>"+coords.map(function(c){ return '<trkpt lat="'+_n6(c[1])+'" lon="'+_n6(c[0])+'">'+ele(c)+'</trkpt>'; }).join("")+"</trkseg></trk>"; }
+  var body="";
+  features.forEach(function(f){
+    var g=f.geometry; if(!g) return;
+    if(g.type==="Point") body+=wpt(g.coordinates);
+    else if(g.type==="MultiPoint") g.coordinates.forEach(function(c){body+=wpt(c);});
+    else if(g.type==="LineString") body+=trk(g.coordinates);
+    else if(g.type==="MultiLineString") g.coordinates.forEach(function(l){body+=trk(l);});
+    else if(g.type==="Polygon") g.coordinates.forEach(function(r){body+=trk(r);});
+    else if(g.type==="MultiPolygon") g.coordinates.forEach(function(p){p.forEach(function(r){body+=trk(r);});});
+  });
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="ForestGeo Studio" xmlns="http://www.topografix.com/GPX/1/1">'+body+'</gpx>';
+}
+
+// --- KML -> GeoJSON ---
+function kmlToGeoJSON(text){
+  var xml=new DOMParser().parseFromString(text,"application/xml");
+  if(xml.getElementsByTagName("parsererror").length) throw new Error("KML解析エラー");
+  function pc(str){ return str.trim().split(/\s+/).map(function(t){ var p=t.split(","),c=[parseFloat(p[0]),parseFloat(p[1])]; if(p.length>2&&isFinite(parseFloat(p[2])))c.push(parseFloat(p[2])); return c; }).filter(function(c){return isFinite(c[0])&&isFinite(c[1]);}); }
+  var feats=[],pms=xml.getElementsByTagName("Placemark");
+  // Placemark から属性（name / description / ExtendedData）を収集する
+  function _kmlText(parent,tag){ var e=parent.getElementsByTagName(tag)[0]; return e?e.textContent.trim():null; }
+  function _kmlProps(pm){
+    var props={};
+    var nm=_kmlText(pm,"name"); if(nm) props.name=nm;
+    var desc=_kmlText(pm,"description");
+    if(desc) props.description=desc.replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
+    var ed=pm.getElementsByTagName("ExtendedData")[0];
+    if(ed){
+      var ds=ed.getElementsByTagName("Data");           // <Data name="X"><value>V</value></Data>
+      for(var x=0;x<ds.length;x++){ var k=ds[x].getAttribute("name"); if(!k) continue; var v=ds[x].getElementsByTagName("value")[0]; props[k]=v?v.textContent.trim():""; }
+      var sd=ed.getElementsByTagName("SimpleData");      // <SimpleData name="X">V</SimpleData>
+      for(var y=0;y<sd.length;y++){ var k2=sd[y].getAttribute("name"); if(!k2) continue; props[k2]=sd[y].textContent.trim(); }
+    }
+    return props;
+  }
+  for(var i=0;i<pms.length;i++){
+    var pm=pms[i];
+    var props=_kmlProps(pm);
+    function add(geom){ if(geom) feats.push({type:"Feature",properties:props,geometry:geom}); }
+    var P=pm.getElementsByTagName("Point");
+    for(var a=0;a<P.length;a++){ var pcn=P[a].getElementsByTagName("coordinates")[0]; if(pcn){ var ar=pc(pcn.textContent); if(ar.length) add({type:"Point",coordinates:ar[0]}); } }
+    var L=pm.getElementsByTagName("LineString");
+    for(var b=0;b<L.length;b++){ var lcn=L[b].getElementsByTagName("coordinates")[0]; if(lcn){ var la=pc(lcn.textContent); if(la.length>=2) add({type:"LineString",coordinates:la}); } }
+    var G=pm.getElementsByTagName("Polygon");
+    for(var d=0;d<G.length;d++){
+      var rings=[], ob=G[d].getElementsByTagName("outerBoundaryIs")[0];
+      if(ob){ var oc=ob.getElementsByTagName("coordinates")[0]; if(oc) rings.push(pc(oc.textContent)); }
+      var ibs=G[d].getElementsByTagName("innerBoundaryIs");
+      for(var e2=0;e2<ibs.length;e2++){ var ic=ibs[e2].getElementsByTagName("coordinates")[0]; if(ic) rings.push(pc(ic.textContent)); }
+      if(rings.length&&rings[0]&&rings[0].length>=3) add({type:"Polygon",coordinates:rings});
+    }
+  }
+  return {type:"FeatureCollection",features:feats};
+}
+
+// --- GPX -> GeoJSON ---
+function gpxToGeoJSON(text){
+  var xml=new DOMParser().parseFromString(text,"application/xml");
+  if(xml.getElementsByTagName("parsererror").length) throw new Error("GPX解析エラー");
+  function pcoord(n){ var lat=parseFloat(n.getAttribute("lat")),lon=parseFloat(n.getAttribute("lon")); if(!isFinite(lat)||!isFinite(lon))return null; var e=n.getElementsByTagName("ele")[0],c=[lon,lat]; if(e&&isFinite(parseFloat(e.textContent)))c.push(parseFloat(e.textContent)); return c; }
+  function seg(nodes){ var a=[]; for(var k=0;k<nodes.length;k++){ var c=pcoord(nodes[k]); if(c)a.push(c);} return a; }
+  // 直下の子要素テキストのみ取得（trkpt の ele などを trk 属性に混ぜないため）
+  function _childText(node,tag){ var ch=node.childNodes; for(var i=0;i<ch.length;i++){ if(ch[i].nodeType===1 && ch[i].nodeName.toLowerCase()===tag) return (ch[i].textContent||"").trim(); } return null; }
+  function _gpxProps(node,tags){ var props={}; for(var i=0;i<tags.length;i++){ var v=_childText(node,tags[i]); if(v!=null && v!=="") props[tags[i]]=v; } return props; }
+  var feats=[],W=xml.getElementsByTagName("wpt");
+  for(var i=0;i<W.length;i++){ var c=pcoord(W[i]); if(c){ feats.push({type:"Feature",properties:_gpxProps(W[i],["name","desc","cmt","sym","type","ele","time"]),geometry:{type:"Point",coordinates:c}}); } }
+  var T=xml.getElementsByTagName("trk");
+  for(var t=0;t<T.length;t++){ var tp=_gpxProps(T[t],["name","desc","cmt","type","src"]); var S=T[t].getElementsByTagName("trkseg"); for(var s=0;s<S.length;s++){ var ar=seg(S[s].getElementsByTagName("trkpt")); if(ar.length>=2) feats.push({type:"Feature",properties:tp,geometry:{type:"LineString",coordinates:ar}}); } }
+  var R=xml.getElementsByTagName("rte");
+  for(var r=0;r<R.length;r++){ var rp=_gpxProps(R[r],["name","desc","cmt","type","src"]); var ar2=seg(R[r].getElementsByTagName("rtept")); if(ar2.length>=2) feats.push({type:"Feature",properties:rp,geometry:{type:"LineString",coordinates:ar2}}); }
+  return {type:"FeatureCollection",features:feats};
+}
+
+
+// 作図を保存（保存ダイアログで GeoJSON / KML / GPX を選択）
+async function exportDrawData() {
+  if (!_drawFeatures || !_drawFeatures.length) { alert("保存する作図がありません。"); return; }
+  const build = {
+    geojson: function(){ return JSON.stringify({ type:"FeatureCollection", features:_drawFeatures }, null, 2); },
+    kml:     function(){ return featuresToKML(_drawFeatures); },
+    gpx:     function(){ return featuresToGPX(_drawFeatures); }
+  };
+  const mime = { geojson:"application/geo+json", kml:"application/vnd.google-earth.kml+xml", gpx:"application/gpx+xml" };
+  // モダンブラウザ: ネイティブ保存ダイアログで拡張子（形式）を選択
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: "draw_features.geojson",
+        types: [
+          { description:"GeoJSON", accept:{ "application/geo+json":[".geojson",".json"] } },
+          { description:"KML",     accept:{ "application/vnd.google-earth.kml+xml":[".kml"] } },
+          { description:"GPX",     accept:{ "application/gpx+xml":[".gpx"] } }
+        ]
+      });
+      const ext = (handle.name.split(".").pop() || "").toLowerCase();
+      const fmt = ext==="kml" ? "kml" : ext==="gpx" ? "gpx" : "geojson";
+      const w = await handle.createWritable();
+      await w.write(new Blob([build[fmt]()], { type: mime[fmt] }));
+      await w.close();
+    } catch (err) { if (err && err.name === "AbortError") return; console.warn(err); alert("保存に失敗しました: " + (err && err.message ? err.message : err)); }
+    return;
+  }
+  // フォールバック（保存ダイアログAPI非対応）: 形式を選んでダウンロード
+  const pick = prompt("保存形式を番号で選択してください:\n 1 = GeoJSON\n 2 = KML\n 3 = GPX", "1");
+  if (pick === null) return;
+  const fmt = pick.trim()==="2" ? "kml" : pick.trim()==="3" ? "gpx" : "geojson";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([build[fmt]()], { type: mime[fmt] }));
+  a.download = "draw_features." + fmt;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+// ========== GeoJSONインポート ==========
+let _importCounter = 0;
+
+map.on("load", () => {
+  // インポート用ソース・レイヤはファイルごとに動的追加
+});
+
+// ---- 外部データ読込レイヤの対話化（ポップアップ／属性集計／属性検索）----
+// 取り込んだベクタは実体のあるベクタレイヤ（_import-*）として追加済みなので、
+// 生成時には存在しなかったこれらレイヤを実行時に各機能へ登録する。
+let _importPopup = null;
+const _importPopupLayerIds = [];   // クリックでポップアップ対象とする _import-* レイヤID
+let _importClickBound = false;
+
+function _importBuildPopupHTML(props){
+  const rows = Object.entries(props || {})
+    .filter(([k]) => !String(k).startsWith("_"))
+    .map(([key, value]) => `<tr><td class="pk">${key}</td><td>${value ?? ""}</td></tr>`)
+    .join("");
+  return rows ? `<table class="ptbl">${rows}</table>` : "<em>属性なし</em>";
+}
+function _importGetPopup(){
+  // 既存の共有ポップアップがあれば再利用、無ければ専用ポップアップを生成
+  if (typeof popup !== "undefined" && popup) return popup;
+  if (!_importPopup) _importPopup = new maplibregl.Popup({ closeButton: true, maxWidth: "320px" });
+  return _importPopup;
+}
+function _importBindPopup(ids){
+  ids.forEach(function(layerId){
+    if (_importPopupLayerIds.indexOf(layerId) < 0) _importPopupLayerIds.push(layerId);
+    map.on("mouseenter", layerId, function(){ map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layerId, function(){ map.getCanvas().style.cursor = ""; });
+  });
+  if (_importClickBound) return;
+  _importClickBound = true;
+  // 1つのクリックハンドラで登録済み _import-* レイヤをまとめて判定する
+  map.on("click", function(e){
+    if (window.__statsActive) return;          // 属性集計モード中はポップアップ抑止
+    const layers = _importPopupLayerIds.filter(function(id){ return map.getLayer(id); });
+    if (!layers.length) return;
+    const feats = map.queryRenderedFeatures(e.point, { layers: layers });
+    if (!feats || !feats.length) return;
+    _importGetPopup()
+      .setLngLat(e.lngLat)
+      .setHTML(_importBuildPopupHTML(feats[0].properties || {}))
+      .addTo(map);
+  });
+}
+
+// 取り込んだフィーチャ配列から、集計・検索に使える属性フィールド名を抽出
+function _importCollectFields(feats){
+  const seen = Object.create(null);
+  const order = [];
+  for (let i = 0; i < feats.length && i < 2000; i++){
+    const p = feats[i] && feats[i].properties;
+    if (!p) continue;
+    for (const k in p){
+      if (!Object.prototype.hasOwnProperty.call(p, k)) continue;
+      if (String(k).charAt(0) === "_") continue;        // システム的フィールドは除外
+      if (!seen[k]){ seen[k] = true; order.push(k); }
+    }
+  }
+  return order;
+}
+
+// _import-* の3レイヤ（fill/line/circle）を各機能へ登録する
+function _registerImportInteractivity(baseId, name, feats){
+  const ids = [baseId+"-fill", baseId+"-line", baseId+"-circle"];
+  // 1) 属性ポップアップ
+  _importBindPopup(ids);
+  // 2) 属性集計（stats-extension.js が有効なときのみ）
+  if (window.__statsRegisterExternal) {
+    try { window.__statsRegisterExternal(ids, name); } catch(e){ console.warn("[import] stats register failed", e); }
+  }
+  // 3) 属性検索（feature-search が有効なときのみ）
+  if (window.__featureSearchRegister) {
+    try {
+      window.__featureSearchRegister({
+        id: baseId, name: name, sourceId: baseId,
+        fields: _importCollectFields(feats || []),
+        features: feats || []
+      });
+    } catch(e){ console.warn("[import] search register failed", e); }
+  }
+}
+
+function importExternal(event) {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+  // GeoTIFF / PMTiles（複数選択時はまとめて1つのPMTilesへマージ）は
+  // pmtiles.js（公開・無保護モジュール）に処理を委譲する。
+  // スクリプト未読込（サーバー未配置など）の場合は素通りし、従来どおりの
+  // GeoJSON/KML/GPXパースでエラーになる（≒未対応形式として扱われる）。
+  const isGeoRaster = (f) => { const n = (f.name || "").toLowerCase(); return n.endsWith(".tif") || n.endsWith(".tiff") || n.endsWith(".pmtiles") || n.endsWith(".pmtile"); };
+  const geoFiles = files.filter(isGeoRaster);
+  if (geoFiles.length && typeof window.__pmtilesHandleImport === "function") {
+    if (window.__pmtilesHandleImport(geoFiles, map)) { event.target.value = ""; return; }
+  }
+  // GeoJSON/KML/GPXは従来どおり単一ファイルのみ対応（複数選択時は先頭のみ使用）。
+  const file = files[0];
+  const _nm = (file.name || "").toLowerCase();
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    let data;
+    try {
+      if (_nm.endsWith(".kml")) data = kmlToGeoJSON(e.target.result);
+      else if (_nm.endsWith(".gpx")) data = gpxToGeoJSON(e.target.result);
+      else data = JSON.parse(e.target.result);
+    } catch(err) { alert("ファイルの解析に失敗しました: " + (err && err.message ? err.message : err)); return; }
+    const _hasFeat = data && ((data.features && data.features.length) || data.type === "Feature" || data.geometry || data.type === "GeometryCollection");
+    if (!_hasFeat) { alert("読み込めるフィーチャがありませんでした。"); return; }
+    const id = "_import-" + (++_importCounter);
+    map.addSource(id, { type: "geojson", data: data });
+
+    // ポリゴン塗りつぶし
+    map.addLayer({ id: id + "-fill", type: "fill", source: id,
+      filter: ["==", "$type", "Polygon"],
+      paint: { "fill-color": "#ff3300", "fill-opacity": 0.3 } });
+    // ライン（ポリゴンアウトライン含む）
+    map.addLayer({ id: id + "-line", type: "line", source: id,
+      filter: ["in", "$type", "Polygon", "LineString"],
+      paint: { "line-color": "#ff3300", "line-width": 2 } });
+    // ポイント
+    map.addLayer({ id: id + "-circle", type: "circle", source: id,
+      filter: ["==", "$type", "Point"],
+      paint: { "circle-color": "#ff3300", "circle-radius": 6, "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
+
+    // レイヤパネルに追加
+    if (typeof addToggle === "function") {
+      addToggle([id+"-fill", id+"-line", id+"-circle"], "📂 " + file.name, "geojson", [], true);
+    }
+
+    // 取り込みデータをフィーチャ配列へ正規化（対話化登録・範囲フィットで共用）
+    const _importFeats =
+      data.type === "FeatureCollection" ? (data.features || []) :
+      data.type === "Feature"           ? [data] :
+      data.type === "GeometryCollection"? (data.geometries || []).map(g => ({ type:"Feature", geometry:g, properties:{} })) :
+      (data.geometry || data.type)      ? [{ type:"Feature", geometry:(data.geometry || data), properties:(data.properties || {}) }] : [];
+
+    // 属性ポップアップ・属性集計・属性検索に対応させる
+    _registerImportInteractivity(id, file.name, _importFeats);
+
+    // 単木アイコン: Point に「樹高」属性があれば 3D で樹木アイコン化する。
+    // 取り込み全件（_importFeats）を渡して即判定。混在ジオメトリは Point に限定。
+    if (window.__treeSvgConsiderGeojsonLayer) {
+      window.__treeSvgConsiderGeojsonLayer({
+        circle_id: id + "-circle",
+        symbol_id: id + "-tree",
+        source: id,
+        point_filter: ["==", "$type", "Point"],
+        features: _importFeats
+      });
+    }
+
+    // バウンディングボックスにフィット
+    try {
+      const coords = [];
+      function collectCoords(geom) {
+        if (!geom) return;
+        if (geom.type === "Point") coords.push(geom.coordinates);
+        else if (geom.type === "LineString" || geom.type === "MultiPoint") geom.coordinates.forEach(c => coords.push(c));
+        else if (geom.type === "Polygon" || geom.type === "MultiLineString") geom.coordinates.forEach(r => r.forEach(c => coords.push(c)));
+        else if (geom.type === "MultiPolygon") geom.coordinates.forEach(p => p.forEach(r => r.forEach(c => coords.push(c))));
+        else if (geom.type === "GeometryCollection") geom.geometries.forEach(collectCoords);
+      }
+      _importFeats.forEach(f => collectCoords(f.geometry));
+      if (coords.length) {
+        const lngs = coords.map(c => c[0]), lats = coords.map(c => c[1]);
+        map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 40 });
+      }
+    } catch(_) {}
+  };
+  reader.readAsText(file);
+  event.target.value = "";  // 同じファイルを再度選択できるようにリセット
+}
+
+
+// ========== 外部タイル入力（XYZ ラスタタイル）==========
+let _extTileCounter = 0;
+
+function toggleExtTilePanel(){
+  const p = document.getElementById("exttile-panel");
+  if(p) p.classList.toggle("open");
+}
+
+// ベースマップ直上（=データレイヤより下）へ挿入する位置を返す。
+// 外部タイルは下地として扱い、QGIS由来のレイヤを隠さないようにする。
+function _extTileBeforeId(){
+  try {
+    const layers = (map.getStyle().layers || []);
+    for(const l of layers){
+      if(l.id === "basemap" || l.id === "basemap2") continue;
+      if(l.id.indexOf("_exttile-") === 0) continue;  // 既存の外部タイルより上
+      return l.id;
+    }
+  } catch(e){}
+  return undefined;
+}
+
+function addExternalTile(){
+  const urlEl  = document.getElementById("exttile-url");
+  const nameEl = document.getElementById("exttile-name");
+  const minEl  = document.getElementById("exttile-minz");
+  const maxEl  = document.getElementById("exttile-maxz");
+  const url = (urlEl.value || "").trim();
+  if(!url){ alert("タイルURLを入力してください。"); return; }
+  if(url.indexOf("{z}") === -1 || url.indexOf("{x}") === -1 || url.indexOf("{y}") === -1){
+    alert("URLには {z} / {x} / {y} を含めてください。\n例: https://example.com/{z}/{x}/{y}.png");
+    return;
+  }
+  let minz = parseInt(minEl.value, 10); if(!isFinite(minz)) minz = 0;
+  let maxz = parseInt(maxEl.value, 10); if(!isFinite(maxz)) maxz = 22;
+  minz = Math.max(0, Math.min(24, minz));
+  maxz = Math.max(minz, Math.min(24, maxz));
+
+  const id = "_exttile-" + (++_extTileCounter);
+  const name = (nameEl.value || "").trim() || ("外部タイル " + _extTileCounter);
+
+  try {
+    map.addSource(id, {
+      type: "raster",
+      tiles: [url],
+      tileSize: 256,
+      minzoom: minz,
+      maxzoom: maxz,
+      attribution: ""
+    });
+    map.addLayer({
+      id: id + "-layer",
+      type: "raster",
+      source: id,
+      minzoom: minz,
+      maxzoom: maxz,
+      paint: { "raster-opacity": 1.0 }
+    }, _extTileBeforeId());
+  } catch(e){
+    alert("タイルの追加に失敗しました: " + (e && e.message ? e.message : e));
+    return;
+  }
+
+  // レイヤパネルへ登録（ON/OFF・透過率の調整が可能になる）
+  if(typeof addToggle === "function"){
+    addToggle([id + "-layer"], "🧩 " + name, "raster", [], true);
+  }
+
+  // 入力欄をリセットしてパネルを閉じる
+  urlEl.value = ""; nameEl.value = ""; minEl.value = ""; maxEl.value = "";
+  toggleExtTilePanel();
+}
+
+
+// ========== 3D地形ビュー（国土地理院 DEM5A）==========
+//
+// GSI DEM5A PNG 標高計算式:
+//   x = R*65536 + G*256 + B
+//   x < 2^23  → h = x * 0.01 m （正の標高 / 日本域: R ≦ 5 @ 富士山3776m）
+//   x == 2^23 → NA  ← 無効値は (R=128,G=0,B=0) で表される
+//   x > 2^23  → h = (x - 2^24) * 0.01 m （負の標高）
+//
+// 問題: MapLibre custom エンコーディングは線形計算のみ。
+//   NA (128,0,0) → 655.36*128 = 83886m という超高値になり地形がスパイク状になる。
+//
+// 解決: addProtocol でタイルを Canvas 処理し、
+//   R >= 128（NA値および負の標高）を (0,0,0) = 0m に置換してから MapLibre に渡す。
+//   ※海岸線の遷移ピクセル（負の標高: R=129～255）も同様に超高値になるため一括処理。
+
+(function registerGsiDemProtocol() {
+  maplibregl.addProtocol('gsidem', async (params, abortController) => {
+    // "gsidem://" を "https://" に置換して実際のURLを取得
+    const url = params.url.replace('gsidem://', 'https://');
+    let response;
+    try {
+      response = await fetch(url, { signal: abortController.signal });
+    } catch (e) {
+      // 取得失敗 → 全ピクセル 0m（黒タイル）として返す
+      const blank = new Uint8Array(256 * 256 * 4); // 全ゼロ = 0m
+      for (let i = 3; i < blank.length; i += 4) blank[i] = 255; // alpha=255
+      return { data: blank.buffer };
+    }
+    if (!response.ok) {
+      const blank = new Uint8Array(256 * 256 * 4);
+      for (let i = 3; i < blank.length; i += 4) blank[i] = 255;
+      return { data: blank.buffer };
+    }
+
+    const blob = await response.blob();
+    const imgBitmap = await createImageBitmap(blob);
+
+    const canvas = new OffscreenCanvas(imgBitmap.width, imgBitmap.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgBitmap, 0, 0);
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+
+    // GSI DEM5A: x = R*65536 + G*256 + B
+    //   x >= 2^23 (R >= 128) → NA または負の標高（海底・海面下）
+    //   線形計算では R=129 → 84541m などの超高値になりスパイク発生するため
+    //   R >= 128 のピクセルをすべて (0,0,0) = 0m（海面レベル）に置換する
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] >= 128) {
+        d[i] = 0; d[i + 1] = 0; d[i + 2] = 0;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // OffscreenCanvas → ArrayBuffer
+    const resultBlob = await canvas.convertToBlob({ type: 'image/png' });
+    const buffer = await resultBlob.arrayBuffer();
+    return { data: buffer };
+  });
+})();
+
+let _is3D = false;
+
+function toggle3DView() {
+  _is3D = !_is3D;
+  const btn = document.getElementById('btn-3d');
+  if (_is3D) {
+    // 3Dモードへ
+    map.setTerrain({ source: 'terrain-dem', exaggeration: 1.5 });
+    map.easeTo({ pitch: 60, bearing: 30, duration: 1200 });
+    if (btn) {
+      btn.style.background = 'var(--green-dark)';
+      btn.textContent = '🗺️ 2Dに戻す';
+    }
+  } else {
+    // 2Dモードへ（真北・平面に戻す）
+    map.setTerrain(null);
+    map.easeTo({ pitch: 0, bearing: 0, duration: 1200 });
+    if (btn) {
+      btn.style.background = 'var(--green)';
+      btn.textContent = '🏔️ 3Dビュー';
+    }
+  }
+  // 単木SVGアイコン連携（treesvg.js があれば 3D/2D 切替に反応）
+  if (window.__treeSvgOnViewModeChange) window.__treeSvgOnViewModeChange(_is3D);
+}
+
+
+// ========== スプリットビュー（レイヤ表示比較） ==========
+(function setupSplitView(){
+  let map2 = null;
+  let active = false;
+  let ratio = 0.5;          // 分割位置（0..1, #map 左端からの割合）
+  let _syncing = false;
+
+  function el(id){ return document.getElementById(id); }
+
+  function applyClip(){
+    const wrap = el("map");
+    if(!wrap || !map2) return;
+    const w = wrap.clientWidth;
+    const x = Math.round(w * ratio);
+    // 左側に固定ビュー(map2)を表示。右側は下のメインmapが見える。
+    const m2 = el("map2");
+    if(m2) m2.style.clipPath = "inset(0 " + (w - x) + "px 0 0)";
+    const dv = el("split-divider");
+    if(dv) dv.style.left = x + "px";
+  }
+
+  function syncCamera(from, to){
+    if(_syncing) return;
+    _syncing = true;
+    try {
+      to.jumpTo({
+        center: from.getCenter(),
+        zoom: from.getZoom(),
+        bearing: from.getBearing(),
+        pitch: from.getPitch()
+      });
+    } catch(e){}
+    _syncing = false;
+  }
+
+  function startDrag(){
+    const wrap = el("map");
+    function onMove(clientX){
+      const r = wrap.getBoundingClientRect();
+      let x = clientX - r.left;
+      x = Math.max(40, Math.min(r.width - 40, x));  // 最小幅を確保
+      ratio = x / r.width;
+      applyClip();
+    }
+    function mm(e){ onMove(e.clientX); e.preventDefault(); }
+    function tm(e){ if(e.touches && e.touches[0]) onMove(e.touches[0].clientX); }
+    function up(){
+      document.removeEventListener("mousemove", mm);
+      document.removeEventListener("mouseup", up);
+      document.removeEventListener("touchmove", tm);
+      document.removeEventListener("touchend", up);
+    }
+    document.addEventListener("mousemove", mm);
+    document.addEventListener("mouseup", up);
+    document.addEventListener("touchmove", tm, {passive:true});
+    document.addEventListener("touchend", up);
+  }
+
+  function buildMap2(){
+    // 現在のレイヤ表示状態をそのままスナップショットとして複製
+    let style;
+    try { style = map.getStyle(); } catch(e){ style = null; }
+    if(!style){ return null; }
+    const m2 = new maplibregl.Map({
+      container: "map2",
+      style: style,
+      center: map.getCenter(),
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch(),
+      attributionControl: false,
+      interactive: false        // 入力はメインmapが受け、map2は連動表示のみ
+    });
+    m2.on("load", function(){
+      // 3D地形のスナップショット（メインが3Dなら傾斜地形を合わせる）
+      try {
+        const t = (map.getTerrain && map.getTerrain());
+        if(t) m2.setTerrain(t);
+      } catch(e){}
+      // FlatGeobuf ストリーミングを map2 にも適用（固定側もパン時にデータを表示）
+      if(window.__fgbStreams){
+        window.__fgbStreams.forEach(function(s){
+          try { window.__streamFgbInto(m2, s.layerId, s.url); } catch(e){}
+        });
+      }
+    });
+    return m2;
+  }
+
+  function _onMainMove(){ if(map2) syncCamera(map, map2); }
+
+  window.toggleSplitView = function(){
+    const btn = el("btn-split");
+    const m2el = el("map2");
+    const dv = el("split-divider");
+    if(!active){
+      // 起動: map2 を現在の表示状態で生成（毎回スナップショットを取り直す）
+      if(m2el) m2el.style.display = "block";
+      if(dv) dv.style.display = "block";
+      if(map2){ try { map2.remove(); } catch(e){} map2 = null; }
+      map2 = buildMap2();
+      if(!map2){
+        if(m2el) m2el.style.display = "none";
+        if(dv) dv.style.display = "none";
+        alert("スプリットビューを開始できませんでした。");
+        return;
+      }
+      active = true;
+      ratio = 0.5;
+      map.on("move", _onMainMove);   // カメラ連動（固定側は非対話なのでメインのみ監視）
+      requestAnimationFrame(function(){ if(map2){ map2.resize(); } applyClip(); });
+      if(btn){ btn.style.background = "var(--green-dark)"; btn.textContent = "🟰 スプリット解除"; }
+    } else {
+      // 解除
+      active = false;
+      map.off("move", _onMainMove);
+      if(m2el){ m2el.style.display = "none"; m2el.style.clipPath = ""; }
+      if(dv) dv.style.display = "none";
+      if(map2){ try { map2.remove(); } catch(e){} map2 = null; }
+      if(btn){ btn.style.background = "var(--green)"; btn.textContent = "🟰 スプリットビュー"; }
+    }
+  };
+
+  function init(){
+    const dv = el("split-divider");
+    if(dv){
+      dv.addEventListener("mousedown", function(e){ e.preventDefault(); startDrag(); });
+      dv.addEventListener("touchstart", function(e){ startDrag(); }, {passive:true});
+    }
+    window.addEventListener("resize", function(){
+      if(active && map2){ map2.resize(); applyClip(); }
+    });
+  }
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  } else { init(); }
+})();
+
+
+// ========== 単木アイコン（treesvg.js / 有償オプション・WebGL symbol描画） ==========
+(function setupTreeSvg(){
+  const TREE_LAYERS = [];   // [{circle_id, symbol_id, source, source_layer}]
+  const SPECIES     = [["スギ", "sugi"], ["ヒノキ", "hinoki"], ["マツ類", "matsu"], ["カラマツ", "karamatsu"], ["その他N", "otherN"], ["その他L", "otherL"]];  // [[樹種, slug], ...]
+  const TIERS       = [["low", 20.0], ["mid", 40.0], ["high", 65.0]];    // [[tierSlug, 代表樹冠長率], ...]
+  const ICON_PREFIX = "treeicon_";
+  const ICON_IMAGE_EXPR = ["step", ["zoom"], ["concat", "treeicon_", ["match", ["get", "樹種"], "スギ", "sugi", "ヒノキ", "hinoki", "マツ類", "matsu", "カラマツ", "karamatsu", "その他N", "otherN", "その他L", "otherL", "otherN"], "_crown"], 14, ["concat", "treeicon_", ["match", ["get", "樹種"], "スギ", "sugi", "ヒノキ", "hinoki", "マツ類", "matsu", "カラマツ", "karamatsu", "その他N", "otherN", "その他L", "otherL", "otherN"], "_", ["step", ["to-number", ["coalesce", ["get", "樹冠長率"], 40.0], 40.0], "low", 30.0, "mid", 50.0, "high"]]];
+  const ICON_SIZE_EXPR  = ["interpolate", ["exponential", 2], ["zoom"], 0, ["max", 0.04, ["*", ["to-number", ["coalesce", ["get", "樹高"], 10.0], 10.0], 1.0254345231082525e-08]], 24, ["max", 0.04, ["*", ["to-number", ["coalesce", ["get", "樹高"], 10.0], 10.0], 0.17203936488044144]]];
+  const ICON_W = 480.0;          // アイコン基準幅(px)
+  const ICON_H = 768.0;          // アイコン基準高(px)
+  const HEIGHT_FIELD = "樹高"; // 樹木判定に使う「樹高」属性フィールド名
+  const PR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+
+  let want3D = false;     // toggle3DView から渡される希望状態
+  let treeReady = false;  // アイコン生成＆symbolレイヤ追加が完了したか
+
+  function treeSvgAvailable(){ return (typeof createTreeSVG === 'function'); }
+
+  // SVG文字列 → ImageData（指定px）にラスタライズ
+  function svgToImageData(svgStr, wPx, hPx){
+    return new Promise(function(resolve, reject){
+      const img = new Image();
+      img.onload = function(){
+        const cw = Math.max(1, Math.round(wPx * PR));
+        const ch = Math.max(1, Math.round(hPx * PR));
+        const cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        const ctx = cv.getContext('2d');
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.drawImage(img, 0, 0, cw, ch);
+        resolve(ctx.getImageData(0, 0, cw, ch));
+      };
+      img.onerror = reject;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+    });
+  }
+
+  // 樹種ごとに「樹冠長率3段階の樹幹+樹冠」＋「樹冠のみ」を生成して登録
+  async function buildIcons(){
+    for (let i = 0; i < SPECIES.length; i++){
+      const jp = SPECIES[i][0], slug = SPECIES[i][1];
+      // 樹幹+樹冠（tier別）。全アイコン同一viewBox(=同一px)なので icon-size が統一できる
+      for (let t = 0; t < TIERS.length; t++){
+        const tierSlug = TIERS[t][0], rep = TIERS[t][1];
+        const name = ICON_PREFIX + slug + '_' + tierSlug;
+        if (map.hasImage(name)) continue;
+        const svg = createTreeSVG({ 樹種: jp, 樹冠長率: rep, showTrunk: true });
+        const data = await svgToImageData(svg, ICON_W, ICON_H);
+        if (!map.hasImage(name)) map.addImage(name, data, { pixelRatio: PR });
+      }
+      // 樹冠のみ（低ズームLOD）
+      const crownName = ICON_PREFIX + slug + '_crown';
+      if (!map.hasImage(crownName)){
+        const svg = createTreeSVG({ 樹種: jp, showTrunk: false });
+        const data = await svgToImageData(svg, ICON_W, ICON_H);
+        if (!map.hasImage(crownName)) map.addImage(crownName, data, { pixelRatio: PR });
+      }
+    }
+  }
+
+  // 1レイヤ分の symbol レイヤを追加する。
+  //   - VT は source-layer 必須／GeoJSON（fgb・外部読込）は source-layer なし。
+  //   - 混在ジオメトリ（外部読込）は point_filter で Point だけに限定する。
+  function addOneSymbolLayer(L){
+    if (map.getLayer(L.symbol_id)) return;
+    if (!map.getSource(L.source)) return;
+    const def = {
+      id: L.symbol_id,
+      type: 'symbol',
+      source: L.source,
+      layout: {
+        'icon-image': ICON_IMAGE_EXPR,
+        'icon-size': ICON_SIZE_EXPR,
+        'icon-anchor': 'bottom',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        'icon-pitch-alignment': 'viewport',   // 地形上に直立（ビルボード）
+        'icon-rotation-alignment': 'viewport',
+        'visibility': 'none'                   // 初期は非表示（2D = 円表示）
+      }
+    };
+    if (L.source_layer) def['source-layer'] = L.source_layer;  // VT のみ付与
+    if (L.point_filter) def.filter = L.point_filter;           // 外部読込の Point 抽出
+    map.addLayer(def);
+  }
+
+  function addSymbolLayers(){
+    TREE_LAYERS.forEach(addOneSymbolLayer);
+  }
+
+  function setCircleHidden(L, hidden){
+    if (!map.getLayer(L.circle_id)) return;
+    map.setPaintProperty(L.circle_id, 'circle-opacity', hidden ? 0 : 1);
+    map.setPaintProperty(L.circle_id, 'circle-stroke-opacity', hidden ? 0 : 1);
+  }
+  function setSymbolVisible(L, show){
+    if (!map.getLayer(L.symbol_id)) return;
+    map.setLayoutProperty(L.symbol_id, 'visibility', show ? 'visible' : 'none');
+  }
+
+  // レイヤパネルでの ON/OFF を尊重するための判定。
+  // チェックボックスは円レイヤ(circle_id)の layout 'visibility' を切り替えるが、
+  // symbolレイヤ(symbol_id)は別管理でチェック対象外。そこで円レイヤの可視状態を
+  // 「このレイヤが有効か」の基準として使う。
+  function isLayerEnabled(L){
+    if (!map.getLayer(L.circle_id)) return false;
+    // 'visibility' 未設定時は undefined を返すため、その場合は既定の 'visible' とみなす
+    return map.getLayoutProperty(L.circle_id, 'visibility') !== 'none';
+  }
+
+  // 現在の状態を反映: 3D かつ treeReady「かつレイヤパネルでONのとき」だけ樹木symbol。
+  // パネルでチェックを外したレイヤは 3D でも円・symbol とも表示しない。
+  function applyMode(){
+    const active = want3D && treeReady && treeSvgAvailable();
+    TREE_LAYERS.forEach(function(L){
+      const on = active && isLayerEnabled(L);
+      setCircleHidden(L, on);     // 樹木表示中のみ円を透明化
+      setSymbolVisible(L, on);    // OFF のレイヤは 3D でも symbol を出さない
+    });
+  }
+
+  async function initTreeSvg(){
+    if (!treeSvgAvailable()){ treeReady = false; applyMode(); return; }
+    try {
+      await buildIcons();
+      addSymbolLayers();
+      treeReady = true;
+    } catch (e){
+      console.warn('[treesvg] アイコン生成に失敗しました。黒い円で表示を継続します。', e);
+      treeReady = false;
+    }
+    applyMode();
+  }
+
+  // toggle3DView から呼ばれるフック（3D/2D 切替）
+  window.__treeSvgOnViewModeChange = function(is3D){
+    want3D = !!is3D;
+    applyMode();
+  };
+
+  // レイヤパネルのチェック切替後に呼ばれ、現在の状態を再反映する。
+  // （3D表示中にレイヤを ON/OFF したとき、円だけでなく symbol も追従させるため）
+  window.__treeSvgReapply = function(){ applyMode(); };
+
+  // ===== 実行時のツリーレイヤ登録（レイヤパネルの fgb・外部データ読込） =====
+  // GeoJSON ソースの Point レイヤに「樹高」属性があれば、3D で樹木アイコン化する。
+  // VT のように生成時には確定できないため、地物を検査して動的に登録する。
+  function _featsHaveHeight(feats){
+    for (let i = 0; i < feats.length && i < 500; i++){
+      const p = feats[i] && feats[i].properties;
+      if (p && p[HEIGHT_FIELD] != null && p[HEIGHT_FIELD] !== '') return true;
+    }
+    return false;
+  }
+  function _alreadyRegistered(symbolId){
+    return TREE_LAYERS.some(function(L){ return L.symbol_id === symbolId; });
+  }
+
+  // 低レベル登録: TREE_LAYERS へ追加し、init 済みなら即 symbol を作って状態反映。
+  // （未 init のときは push のみ。init 時の addSymbolLayers が一括で拾う）
+  window.__treeSvgRegisterLayer = function(L){
+    if (!L || !L.symbol_id || _alreadyRegistered(L.symbol_id)) return;
+    TREE_LAYERS.push(L);
+    if (treeReady) addOneSymbolLayer(L);
+    applyMode();
+  };
+
+  // GeoJSON（fgb・外部読込）レイヤを検査し、樹高属性があれば登録する。
+  //   spec: { circle_id, symbol_id, source, point_filter?, features? }
+  //   - features を渡せばそのサンプルで即判定（外部読込は取り込み全件を渡す）。
+  //   - features 無しのときは source を走査し、未レンダリングなら 'idle' で数回リトライ。
+  window.__treeSvgConsiderGeojsonLayer = function(spec){
+    if (!spec || !spec.source || !spec.symbol_id) return;
+    if (_alreadyRegistered(spec.symbol_id)) return;
+    const L = {
+      circle_id: spec.circle_id || null,
+      symbol_id: spec.symbol_id,
+      source: spec.source,
+      source_layer: null,                       // GeoJSON なので source-layer は無し
+      point_filter: spec.point_filter || null
+    };
+    // 1) サンプル地物が渡された場合（外部読込）は即判定
+    if (spec.features && spec.features.length){
+      if (_featsHaveHeight(spec.features)) window.__treeSvgRegisterLayer(L);
+      return;
+    }
+    // 2) ソース走査で判定（fgb）。読込中で空なら idle で最大5回リトライ。
+    let tries = 0;
+    (function check(){
+      if (_alreadyRegistered(spec.symbol_id)) return;
+      let feats = [];
+      try { feats = map.querySourceFeatures(spec.source) || []; } catch(e){ feats = []; }
+      if (_featsHaveHeight(feats)){ window.__treeSvgRegisterLayer(L); return; }
+      if (++tries < 5) map.once('idle', check);
+    })();
+  };
+
+  // 初期化は本体の map "load" ハンドラから呼ばれる
+  // （保護JS treesvg.js の注入完了後・QGISレイヤのソース追加後に実行するため）。
+  window.__treeSvgInit = function(){
+    // 呼び出し時点では直前に追加したソースが読込中で map.loaded()=false のことがある。
+    // かつ 'load' は再発火しないため、未ロード時は 'idle'（全読込完了）で確実に初期化する。
+    if (map.loaded && map.loaded()) { initTreeSvg(); return; }
+    map.once('idle', initTreeSvg);
+  };
+})();
+
+
+// ========== 属性検索（ベクタレイヤの属性値で地物検索） ==========
+(function setupFeatureSearch(){
+  const FS_LAYERS = [{"id": "layer_2", "name": "国土地理院・浸水判読図", "url": "%E5%9B%BD%E5%9C%9F%E5%9C%B0%E7%90%86%E9%99%A2%E3%83%BB%E6%B5%B8%E6%B0%B4%E5%88%A4%E8%AA%AD%E5%9B%B3.fgb", "geom": "Polygon", "fields": ["_color", "_opacity", "_weight", "_fillColor", "_fillOpacity"]}];
+  const layerSel = document.getElementById("fs-layer");
+  const fieldSel = document.getElementById("fs-field");
+  const input    = document.getElementById("fs-input");
+  const statusEl = document.getElementById("fs-status");
+  if(!layerSel) return;
+
+  // レイヤ選択プルダウンを現在の FS_LAYERS から組み直す。
+  // （外部データ読込で実行時にレイヤが増減するため、その都度呼ぶ）
+  function rebuildLayerOptions(){
+    const prev = layerSel.value;
+    layerSel.innerHTML = "";
+    FS_LAYERS.forEach(function(l, i){
+      const o = document.createElement("option");
+      o.value = String(i); o.textContent = l.name;
+      layerSel.appendChild(o);
+    });
+    // 1レイヤだけなら選択プルダウンは隠す
+    layerSel.style.display = (FS_LAYERS.length <= 1) ? "none" : "";
+    if(prev && Number(prev) < FS_LAYERS.length) layerSel.value = prev;
+    refreshFields();
+    // 検索対象が無いうちはバー全体を隠す（外部読込で増えたら表示）
+    var bar = document.getElementById("feature-search-bar");
+    if(bar) bar.style.display = FS_LAYERS.length ? "" : "none";
+  }
+
+  function refreshFields(){
+    fieldSel.innerHTML = "";
+    const l = FS_LAYERS[Number(layerSel.value) || 0];
+    if(!l) return;
+    (l.fields || []).forEach(function(f){
+      const o = document.createElement("option");
+      o.value = f; o.textContent = f;
+      fieldSel.appendChild(o);
+    });
+  }
+  layerSel.addEventListener("change", refreshFields);
+  rebuildLayerOptions();
+  input.addEventListener("keydown", function(e){ if(e.key === "Enter") runFeatureSearch(); });
+
+  // 外部データ読込レイヤの実行時登録。importExternal から呼ばれる。
+  //   layer = { id, name, fields:[...], features:[...] }（features はインメモリ全件）
+  window.__featureSearchRegister = function(layer){
+    if(!layer || !layer.id) return;
+    for(var i=0;i<FS_LAYERS.length;i++){ if(FS_LAYERS[i].id === layer.id) return; } // 重複防止
+    FS_LAYERS.push(layer);
+    rebuildLayerOptions();
+    // 検索バーが隠れている場合に備えて表示しておく
+    var bar = document.getElementById("feature-search-bar");
+    if(bar) bar.style.display = "";
+  };
+  window.__featureSearchUnregister = function(layerId){
+    for(var i=FS_LAYERS.length-1;i>=0;i--){ if(FS_LAYERS[i].id === layerId) FS_LAYERS.splice(i,1); }
+    rebuildLayerOptions();
+  };
+
+  function ensureHighlightLayers(){
+    if(!map.getSource("_fsearch-src")){
+      map.addSource("_fsearch-src", { type:"geojson", data:{ type:"FeatureCollection", features:[] }});
+    }
+    if(!map.getLayer("_fsearch-fill")){
+      map.addLayer({ id:"_fsearch-fill", type:"fill", source:"_fsearch-src",
+        filter:["==","$type","Polygon"],
+        paint:{ "fill-color":"#ffd400", "fill-opacity":0.35 } });
+    }
+    if(!map.getLayer("_fsearch-line")){
+      map.addLayer({ id:"_fsearch-line", type:"line", source:"_fsearch-src",
+        filter:["in","$type","LineString","Polygon"],
+        paint:{ "line-color":"#ff8c00", "line-width":3 } });
+    }
+    if(!map.getLayer("_fsearch-pt")){
+      map.addLayer({ id:"_fsearch-pt", type:"circle", source:"_fsearch-src",
+        filter:["==","$type","Point"],
+        paint:{ "circle-color":"#ffd400", "circle-radius":8,
+                "circle-stroke-color":"#ff8c00", "circle-stroke-width":3 } });
+    }
+  }
+
+  window.clearFeatureSearch = function(){
+    if(map.getSource("_fsearch-src"))
+      map.getSource("_fsearch-src").setData({ type:"FeatureCollection", features:[] });
+    if(input) input.value = "";
+    if(statusEl) statusEl.textContent = "";
+  };
+
+  // レイヤごとに全件パース結果をキャッシュ（2回目以降の検索を高速化）
+  const _fsCache = {};
+  async function loadAllFeatures(l){
+    // 外部データ読込レイヤ: 取り込み時に渡されたインメモリ全件を使う
+    if(l.features && l.features.length !== undefined) return l.features;
+    // マップのGeoJSONソースから直接読む（フォールバック）
+    if(l.sourceId && map.getSource(l.sourceId)){
+      const d = map.getSource(l.sourceId)._data;
+      if(d && d.features) return d.features;
+    }
+    // fgb レイヤ: URL から全件デシリアライズ
+    if(_fsCache[l.url]) return _fsCache[l.url];
+    const resp = await fetch(l.url);
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    const buf = new Uint8Array(await resp.arrayBuffer());
+    // flatgeobuf.deserialize(bytes) は {type, features:[...]} を返す（全件・同期）
+    const fc = flatgeobuf.deserialize(buf);
+    const feats = (fc && fc.features) ? fc.features : [];
+    _fsCache[l.url] = feats;
+    return feats;
+  }
+
+  // ----- 数値フィールド向け 不等号・範囲検索のためのヘルパ -----
+  // 全角の英数記号・空白を半角へ正規化し、日本語の不等号(≧≦≠＝)や波ダッシュ(〜)も標準化する。
+  function _fsNormalize(str){
+    return String(str)
+      .replace(/[！-～]/g, function(ch){ return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); })
+      .replace(/　/g, " ")
+      .replace(/[〜～]/g, "~")
+      .replace(/[≧≥]/g, ">=").replace(/[≦≤]/g, "<=")
+      .replace(/≠/g, "!=").replace(/＝/g, "=");
+  }
+  // 入力を「比較条件」として解釈。該当しなければ null（＝従来の部分一致にフォールバック）。
+  //   単側  : >  >=  <  <=  =(==)  !=(<>)            例: ">=100" "< 50" "=12.5" "!=0"
+  //   単側(和): 以上 / 以下 / 未満 / 超(超過)          例: "100以上" "50未満" "3超"
+  //   範囲  : A~B / A..B（両端含む）                  例: "100~200" "0..5"
+  //   範囲(和): A以上B以下 / A以上B未満                例: "100以上200以下" "0以上5未満"
+  function parseNumericQuery(raw){
+    const s = _fsNormalize(raw).trim();
+    const NUM = "(-?\\d+(?:\\.\\d+)?)";
+    let m;
+
+    // 範囲（日本語）: A以上B以下 / A以上B未満
+    m = s.match(new RegExp("^" + NUM + "\\s*以上\\s*" + NUM + "\\s*(以下|未満)$"));
+    if(m){
+      return { op:"range", lo:parseFloat(m[1]), hi:parseFloat(m[2]),
+               loInc:true, hiInc:(m[3] === "以下") };
+    }
+    // 範囲（記号）: A~B / A..B（両端含む）
+    m = s.match(new RegExp("^" + NUM + "\\s*(?:~|\\.\\.)\\s*" + NUM + "$"));
+    if(m){
+      let lo = parseFloat(m[1]), hi = parseFloat(m[2]);
+      if(lo > hi){ const t = lo; lo = hi; hi = t; }   // 大小が逆でも許容
+      return { op:"range", lo:lo, hi:hi, loInc:true, hiInc:true };
+    }
+    // 単側（日本語）: 以上 / 以下 / 未満 / 超(超過)
+    m = s.match(new RegExp("^" + NUM + "\\s*(以上|以下|未満|超過|超)$"));
+    if(m){
+      const map = { "以上":">=", "以下":"<=", "未満":"<", "超":">", "超過":">" };
+      return { op: map[m[2]], num: parseFloat(m[1]) };
+    }
+    // 単側（記号）: >=100 など
+    m = s.match(new RegExp("^(>=|<=|==|!=|<>|>|<|=)\\s*" + NUM + "$"));
+    if(m){
+      let op = m[1];
+      if(op === "==") op = "=";
+      if(op === "<>") op = "!=";
+      return { op: op, num: parseFloat(m[2]) };
+    }
+    return null;
+  }
+  // 地物の属性値 v が比較条件 q を満たすか。v を数値化できなければ false（＝マッチしない）。
+  function numericMatch(v, q){
+    const n = (typeof v === "number") ? v : parseFloat(_fsNormalize(v));
+    if(!isFinite(n)) return false;
+    if(q.op === "range"){
+      const okLo = q.loInc ? (n >= q.lo) : (n > q.lo);
+      const okHi = q.hiInc ? (n <= q.hi) : (n < q.hi);
+      return okLo && okHi;
+    }
+    switch(q.op){
+      case ">":  return n >  q.num;
+      case ">=": return n >= q.num;
+      case "<":  return n <  q.num;
+      case "<=": return n <= q.num;
+      case "=":  return n === q.num;
+      case "!=": return n !== q.num;
+    }
+    return false;
+  }
+
+  window.runFeatureSearch = async function(){
+    const l = FS_LAYERS[Number(layerSel.value) || 0];
+    const field = fieldSel.value;
+    const kw = (input.value || "").trim();
+    if(!l || !field || !kw){ return; }
+    // 入力が比較式（例: ">=100"）なら数値検索、それ以外は従来どおり部分一致。
+    const numQ = parseNumericQuery(kw);
+    if(statusEl) statusEl.textContent = "検索中…";
+
+    const matches = [];
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    function expand(g){
+      function walk(c){
+        if(typeof c[0] === "number"){
+          if(c[0]<minX) minX=c[0]; if(c[1]<minY) minY=c[1];
+          if(c[0]>maxX) maxX=c[0]; if(c[1]>maxY) maxY=c[1];
+        } else { c.forEach(walk); }
+      }
+      if(g && g.coordinates) walk(g.coordinates);
+    }
+
+    let feats;
+    try {
+      feats = await loadAllFeatures(l);
+    } catch(e){
+      console.warn("[feature-search] load error:", e);
+      if(statusEl) statusEl.textContent = "データ読込に失敗しました";
+      return;
+    }
+
+    for(const f of feats){
+      const v = f.properties ? f.properties[field] : undefined;
+      if(v == null) continue;
+      const hit = numQ ? numericMatch(v, numQ) : (String(v).indexOf(kw) !== -1);
+      if(hit){ matches.push(f); expand(f.geometry); }
+    }
+
+    if(!matches.length){
+      if(map.getSource("_fsearch-src"))
+        map.getSource("_fsearch-src").setData({ type:"FeatureCollection", features:[] });
+      if(statusEl) statusEl.textContent = (numQ ? "条件に該当なし" : "該当なし") + "（" + feats.length + "件中）";
+      return;
+    }
+
+    ensureHighlightLayers();
+    map.getSource("_fsearch-src").setData({ type:"FeatureCollection", features: matches });
+
+    if(isFinite(minX)){
+      if(minX===maxX && minY===maxY){
+        map.flyTo({ center:[minX, minY], zoom: Math.max(map.getZoom(), 16) });
+      } else {
+        map.fitBounds([[minX, minY],[maxX, maxY]], { padding: 60, maxZoom: 17 });
+      }
+    }
+    if(statusEl) statusEl.textContent = matches.length + "件ヒット" + (numQ ? "（数値条件）" : "");
+  };
+})();
+
+window.addEventListener("load", () => {
+  if(window.innerWidth < 768){
+    const panel = document.getElementById("layer-panel");
+    if(panel) panel.classList.remove("open");
+    const g = document.getElementById("tool-group");
+    if(g) g.classList.add("collapsed");
+  }
+});
+
+</script>
+</body>
+</html>
